@@ -23,13 +23,11 @@ pub trait System: Send + Sync + 'static {
     fn new_archetype(&mut self, archetype: &Archetype);
     /// Returns the system's runtime component [`Access`].
     fn component_access(&self) -> &Access<ComponentId>;
-    /// Returns the system's runtime, archetype component [`Access`].
+    /// Returns the system's runtime archetype component [`Access`].
     fn archetype_component_access(&self) -> &Access<ArchetypeComponentId>;
     /// Returns true if the system is [`Send`].
     fn is_send(&self) -> bool;
     /// Runs the system with the given `input` on `world`.
-    /// 
-    /// This method automatically registers new archetypes.
     fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
         // SAFETY: The world is exclusively borrowed.
         unsafe { self.run_unchecked(input, PtrMut::from_mut(world)) }
