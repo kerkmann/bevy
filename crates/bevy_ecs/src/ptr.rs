@@ -3,9 +3,10 @@ use std::{
     ptr::NonNull,
 };
 
+use crate::world::World;
+
 /// Pointer into memory with lifetime.
 /// Guaranteed to be correctly aligned, non-null and safe to write for a particular type.
-#[derive(Clone, Copy)]
 pub struct PtrMut<'a, T>(NonNull<T>, PhantomData<&'a ()>);
 
 impl<'a, T> PtrMut<'a, T> {
@@ -66,3 +67,16 @@ impl<'a, T> PtrMut<'a, T> {
         &mut *self.inner().as_ptr()
     }
 }
+
+// for some reason #[derive(Clone, Copy)] did not work
+impl<T> Copy for PtrMut<'_, T> {}
+impl<T> Clone for PtrMut<'_, T> {
+    fn clone(&self) -> Self {
+        Self(self.0, self.1)
+    }
+}
+
+// SAFETY: We only internally make use of this in the multi-threaded executor,
+// which does not run systems with conflicting access at the same time.
+unsafe impl Send for PtrMut<'_, World> {}
+unsafe impl Sync for PtrMut<'_, World> {}

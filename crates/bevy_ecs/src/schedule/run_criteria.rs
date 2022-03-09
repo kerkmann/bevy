@@ -4,7 +4,7 @@ use crate::{
     query::Access,
     schedule::{BoxedRunCriteriaLabel, GraphNode, RunCriteriaLabel},
     system::{BoxedSystem, IntoSystem, System},
-    world::World,
+    world::World, ptr::PtrMut,
 };
 use std::borrow::Cow;
 
@@ -428,7 +428,7 @@ impl System for RunOnce {
         true
     }
 
-    unsafe fn run_unsafe(&mut self, _input: (), _world: &World) -> ShouldRun {
+    unsafe fn run_unchecked(&mut self, _input: (), _world: PtrMut<World>) -> ShouldRun {
         if self.ran {
             ShouldRun::No
         } else {

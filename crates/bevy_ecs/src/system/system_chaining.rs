@@ -3,7 +3,7 @@ use crate::{
     component::ComponentId,
     query::Access,
     system::{IntoSystem, System},
-    world::World,
+    world::World, ptr::PtrMut,
 };
 use std::borrow::Cow;
 
@@ -82,9 +82,9 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
         self.system_a.is_send() && self.system_b.is_send()
     }
 
-    unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
-        let out = self.system_a.run_unsafe(input, world);
-        self.system_b.run_unsafe(out, world)
+    unsafe fn run_unchecked(&mut self, input: Self::In, world: PtrMut<World>) -> Self::Out {
+        let out = self.system_a.run_unchecked(input, world);
+        self.system_b.run_unchecked(out, world)
     }
 
     fn apply_buffers(&mut self, world: &mut World) {

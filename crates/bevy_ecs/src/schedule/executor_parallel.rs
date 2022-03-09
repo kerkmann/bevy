@@ -2,7 +2,7 @@ use crate::{
     archetype::{ArchetypeComponentId, ArchetypeGeneration},
     query::Access,
     schedule::{ParallelSystemContainer, ParallelSystemExecutor},
-    world::World,
+    world::World, ptr::PtrMut,
 };
 use async_channel::{Receiver, Sender};
 use bevy_tasks::{ComputeTaskPool, Scope, TaskPool};
@@ -120,7 +120,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
             .get_resource_or_insert_with(|| ComputeTaskPool(TaskPool::default()))
             .clone();
         compute_pool.scope(|scope| {
-            self.prepare_systems(scope, systems, world);
+            self.prepare_systems(scope, systems, PtrMut::from_mut(world));
             let parallel_executor = async {
                 // All systems have been ran if there are no queued or running systems.
                 while 0 != self.queued.count_ones(..) + self.running.count_ones(..) {
@@ -179,11 +179,11 @@ impl ParallelExecutor {
 
     /// Populates `should_run` bitset, spawns tasks for systems that should run this iteration,
     /// queues systems with no dependencies to run (or skip) at next opportunity.
-    fn prepare_systems<'scope>(
+    fn prepare_systems<'world: 'scope, 'scope>(
         &mut self,
         scope: &mut Scope<'scope, ()>,
         systems: &'scope mut [ParallelSystemContainer],
-        world: &'scope World,
+        world: PtrMut<'world, World>,
     ) {
         #[cfg(feature = "trace")]
         let span = bevy_utils::tracing::info_span!("prepare_systems");
@@ -211,7 +211,7 @@ impl ParallelExecutor {
                         .unwrap_or_else(|error| unreachable!("{}", error));
                     #[cfg(feature = "trace")]
                     let system_guard = system_span.enter();
-                    unsafe { system.run_unsafe((), world) };
+                    unsafe { system.run_unchecked((), world) };
                     #[cfg(feature = "trace")]
                     drop(system_guard);
                     finish_sender

@@ -7,7 +7,7 @@ use crate::{
 pub use bevy_ecs_macros::Component;
 use std::{
     alloc::Layout,
-    any::{Any, TypeId},
+    any::TypeId,
 };
 
 /// A component is data associated with an [`Entity`](crate::entity::Entity). Each entity can have
@@ -209,7 +209,7 @@ impl ComponentDescriptor {
         }
     }
 
-    fn new_non_send<T: Any>(storage_type: StorageType) -> Self {
+    fn new_non_send<T: std::any::Any>(storage_type: StorageType) -> Self {
         Self {
             name: std::any::type_name::<T>().to_string(),
             storage_type,
@@ -308,7 +308,7 @@ impl Components {
     }
 
     #[inline]
-    pub fn init_non_send<T: Any>(&mut self) -> ComponentId {
+    pub fn init_non_send<T: std::any::Any>(&mut self) -> ComponentId {
         // SAFE: The [`ComponentDescriptor`] matches the [`TypeId`]
         unsafe {
             self.get_or_insert_resource_with(TypeId::of::<T>(), || {
@@ -401,4 +401,13 @@ fn check_tick(last_change_tick: &mut u32, change_tick: u32) {
     if tick_delta > MAX_DELTA {
         *last_change_tick = change_tick.wrapping_sub(MAX_DELTA);
     }
+}
+
+/// A non-existent component "accessed" by systems with [`Commands`](crate::system::Commands), [`&World`](crate::world::World) or [`&mut World`](crate::world::World) parameters.
+///
+/// This is defined so that conflicting [`Access`](crate::query::Access) sets never have an empty intersection.
+pub(crate) struct Any;
+
+impl Component for Any {
+    type Storage = TableStorage;
 }

@@ -3,8 +3,9 @@ use crate::{
     archetype::{Archetype, Archetypes},
     bundle::Bundles,
     change_detection::Ticks,
-    component::{Component, ComponentId, ComponentTicks, Components},
+    component::{Component, ComponentId, ComponentTicks, Components, Any},
     entity::{Entities, Entity},
+    ptr::PtrMut,
     query::{
         Access, FilterFetch, FilteredAccess, FilteredAccessSet, QueryState, ReadOnlyFetch,
         WorldQuery,
@@ -82,7 +83,7 @@ pub trait SystemParamFetch<'world, 'state>: SystemParamState {
     unsafe fn get_param(
         state: &'state mut Self,
         system_meta: &SystemMeta,
-        world: &'world World,
+        world: PtrMut<'world, World>,
         change_tick: u32,
     ) -> Self::Item;
 }
@@ -146,10 +147,10 @@ where
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
-        Query::new(world, state, system_meta.last_change_tick, change_tick)
+        Query::new(world.as_ref(), state, system_meta.last_change_tick, change_tick)
     }
 }
 
@@ -309,10 +310,11 @@ impl<'w, 's, T: Resource> SystemParamFetch<'w, 's> for ResState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         let column = world
+            .as_ref()
             .get_populated_resource_column(state.component_id)
             .unwrap_or_else(|| {
                 panic!(
@@ -354,10 +356,11 @@ impl<'w, 's, T: Resource> SystemParamFetch<'w, 's> for OptionResState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         world
+            .as_ref()
             .get_populated_resource_column(state.0.component_id)
             .map(|column| Res {
                 value: &*column.get_data_ptr().cast::<T>().as_ptr(),
@@ -416,10 +419,11 @@ impl<'w, 's, T: Resource> SystemParamFetch<'w, 's> for ResMutState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         let value = world
+            .as_ref()
             .get_resource_unchecked_mut_with_id(state.component_id)
             .unwrap_or_else(|| {
                 panic!(
@@ -460,10 +464,11 @@ impl<'w, 's, T: Resource> SystemParamFetch<'w, 's> for OptionResMutState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         world
+            .as_ref()
             .get_resource_unchecked_mut_with_id(state.0.component_id)
             .map(|value| ResMut {
                 value: value.value,
@@ -485,7 +490,27 @@ unsafe impl ReadOnlySystemParamFetch for CommandQueue {}
 
 // SAFE: only local state is accessed
 unsafe impl SystemParamState for CommandQueue {
-    fn init(_world: &mut World, _system_meta: &mut SystemMeta) -> Self {
+    fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        let mut component_access = FilteredAccess::default();
+        let id = world.init_component::<Any>();
+        component_access.add_read(id);
+
+        // conflict with &mut World (if &mut World appears first)
+        if !system_meta
+            .component_access_set
+            .get_conflicts(&component_access)
+            .is_empty()
+        {
+            panic!(
+                "Commands conflicts with another system param in {}. \
+                Commands and &mut World cannot appear in the same signature.",
+                system_meta.name,
+            );
+        }
+
+        // conflict with &mut World (if it Commands appears first)
+        system_meta.component_access_set.add(component_access);
+
         Default::default()
     }
 
@@ -501,15 +526,12 @@ impl<'w, 's> SystemParamFetch<'w, 's> for CommandQueue {
     unsafe fn get_param(
         state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
-        Commands::new(state, world)
+        Commands::new(state, world.as_ref())
     }
 }
-
-/// SAFE: only reads world
-unsafe impl ReadOnlySystemParamFetch for WorldState {}
 
 /// The [`SystemParamState`] of [`&World`](crate::world::World).
 pub struct WorldState;
@@ -519,28 +541,27 @@ impl<'w, 's> SystemParam for &'w World {
 }
 
 unsafe impl<'w, 's> SystemParamState for WorldState {
-    fn init(_world: &mut World, system_meta: &mut SystemMeta) -> Self {
-        let mut access = Access::default();
-        access.read_all();
-        if !system_meta
-            .archetype_component_access
-            .is_compatible(&access)
-        {
-            panic!("&World conflicts with a previous mutable system parameter. Allowing this would break Rust's mutability rules");
-        }
-        system_meta.archetype_component_access.extend(&access);
+    fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        let mut component_access = FilteredAccess::default();
+        let id = world.init_component::<Any>();
+        component_access.add_read(id);
+        component_access.read_all();
 
-        let mut filtered_access = FilteredAccess::default();
-
-        filtered_access.read_all();
         if !system_meta
             .component_access_set
-            .get_conflicts(&filtered_access)
+            .get_conflicts(&component_access)
             .is_empty()
         {
-            panic!("&World conflicts with a previous mutable system parameter. Allowing this would break Rust's mutability rules");
+            panic!(
+                "&World conflicts with another system param in {}. \
+                Shared access and mutable access cannot overlap.",
+                system_meta.name,
+            );
         }
-        system_meta.component_access_set.add(filtered_access);
+
+        system_meta.component_access_set.add(component_access);
+        // prevent executor from concurrently running any systems that write
+        system_meta.archetype_component_access.read_all();
 
         WorldState
     }
@@ -551,10 +572,110 @@ impl<'w, 's> SystemParamFetch<'w, 's> for WorldState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
-        world
+        world.as_ref()
+    }
+}
+
+/// SAFETY: &World is an immutable borrow.
+unsafe impl ReadOnlySystemParamFetch for WorldState {}
+
+/// The [`SystemParamState`] of [`&mut World`](crate::world::World).
+pub struct WorldMutState;
+
+impl<'w, 's> SystemParam for &'w mut World {
+    type Fetch = WorldMutState;
+}
+
+unsafe impl<'w, 's> SystemParamState for WorldMutState {
+    fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        let mut component_access = FilteredAccess::default();
+        let id = world.init_component::<Any>();
+        component_access.add_write(id);
+        component_access.write_all();
+
+        if !system_meta
+            .component_access_set
+            .get_conflicts(&component_access)
+            .is_empty()
+        {
+            panic!(
+                "&mut World conflicts with another system param in {}. \
+                Mutable access must be unique.",
+                system_meta.name,
+            );
+        }
+
+        system_meta.component_access_set.add(component_access);
+        // prevent executor from concurrently running other systems
+        system_meta.archetype_component_access.write_all();
+
+        WorldMutState
+    }
+}
+
+impl<'w, 's> SystemParamFetch<'w, 's> for WorldMutState {
+    type Item = &'w mut World;
+    unsafe fn get_param(
+        _state: &'s mut Self,
+        _system_meta: &SystemMeta,
+        world: PtrMut<'w, World>,
+        _change_tick: u32,
+    ) -> Self::Item {
+        world.as_mut()
+    }
+}
+
+/// An empty [`SystemParam`] that disallows other systems from running in parallel.
+pub struct Exclusive;
+
+/// The [`SystemParamState`] of [`Exclusive`].
+pub struct ExclusiveState;
+
+impl<'w, 's> SystemParam for Exclusive {
+    type Fetch = ExclusiveState;
+}
+
+unsafe impl<'w, 's> SystemParamState for ExclusiveState {
+    fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        let mut component_access = FilteredAccess::default();
+        let id = world.init_component::<Any>();
+        component_access.add_read(id);
+        component_access.read_all();
+
+        // conflict with &mut World (if &mut World appears first)
+        if !system_meta
+            .component_access_set
+            .get_conflicts(&component_access)
+            .is_empty()
+        {
+            panic!(
+                "Exclusive conflicts with another system param in {}. \
+                If the &mut World param is present, Exclusive is redundant.",
+                system_meta.name,
+            );
+        }
+
+        // conflict with &mut World (if Exclusive appears first)
+        system_meta.component_access_set.add(component_access);
+        // prevent executor from concurrently running other systems
+        system_meta.archetype_component_access.write_all();
+
+        ExclusiveState
+    }
+}
+
+impl<'w, 's> SystemParamFetch<'w, 's> for ExclusiveState {
+    type Item = ();
+    unsafe fn get_param(
+        _state: &'s mut Self,
+        _system_meta: &SystemMeta,
+        world: PtrMut<'w, World>,
+        _change_tick: u32,
+    ) -> Self::Item {
+        ()
     }
 }
 
@@ -651,7 +772,7 @@ impl<'w, 's, T: Resource + FromWorld> SystemParamFetch<'w, 's> for LocalState<T>
     unsafe fn get_param(
         state: &'s mut Self,
         _system_meta: &SystemMeta,
-        _world: &'w World,
+        _world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         Local(&mut state.0)
@@ -734,11 +855,11 @@ impl<'w, 's, T: Component> SystemParamFetch<'w, 's> for RemovedComponentsState<T
     unsafe fn get_param(
         state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         RemovedComponents {
-            world,
+            world: world.as_ref(),
             component_id: state.component_id,
             marker: PhantomData,
         }
@@ -856,9 +977,10 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for NonSendState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
+        let world = world.as_ref();
         world.validate_non_send_access::<T>();
         let column = world
             .get_populated_resource_column(state.component_id)
@@ -903,9 +1025,10 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for OptionNonSendState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
+        let world = world.as_ref();
         world.validate_non_send_access::<T>();
         world
             .get_populated_resource_column(state.0.component_id)
@@ -968,9 +1091,10 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for NonSendMutState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
+        let world = world.as_ref();
         world.validate_non_send_access::<T>();
         let column = world
             .get_populated_resource_column(state.component_id)
@@ -1013,9 +1137,10 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for OptionNonSendMutState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
+        let world = world .as_ref();
         world.validate_non_send_access::<T>();
         world
             .get_populated_resource_column(state.0.component_id)
@@ -1054,10 +1179,10 @@ impl<'w, 's> SystemParamFetch<'w, 's> for ArchetypesState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
-        world.archetypes()
+        world.as_ref().archetypes()
     }
 }
 
@@ -1085,10 +1210,10 @@ impl<'w, 's> SystemParamFetch<'w, 's> for ComponentsState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
-        world.components()
+        world.as_ref().components()
     }
 }
 
@@ -1116,10 +1241,10 @@ impl<'w, 's> SystemParamFetch<'w, 's> for EntitiesState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
-        world.entities()
+        world.as_ref().entities()
     }
 }
 
@@ -1147,10 +1272,10 @@ impl<'w, 's> SystemParamFetch<'w, 's> for BundlesState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: &'w World,
+        world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
-        world.bundles()
+        world.as_ref().bundles()
     }
 }
 
@@ -1182,7 +1307,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for SystemChangeTickState {
     unsafe fn get_param(
         _state: &'s mut Self,
         system_meta: &SystemMeta,
-        _world: &'w World,
+        _world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         SystemChangeTick {
@@ -1211,7 +1336,7 @@ macro_rules! impl_system_param_tuple {
             unsafe fn get_param(
                 state: &'s mut Self,
                 system_meta: &SystemMeta,
-                world: &'w World,
+                world: PtrMut<'w, World>,
                 change_tick: u32,
             ) -> Self::Item {
 
