@@ -3,7 +3,7 @@ use crate::{
     archetype::{Archetype, Archetypes},
     bundle::Bundles,
     change_detection::Ticks,
-    component::{Component, ComponentId, ComponentTicks, Components, Any},
+    component::{Any, Component, ComponentId, ComponentTicks, Components},
     entity::{Entities, Entity},
     ptr::PtrMut,
     query::{
@@ -150,7 +150,12 @@ where
         world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
-        Query::new(world.as_ref(), state, system_meta.last_change_tick, change_tick)
+        Query::new(
+            world.as_ref(),
+            state,
+            system_meta.last_change_tick,
+            change_tick,
+        )
     }
 }
 
@@ -1140,7 +1145,7 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for OptionNonSendMutState<T> {
         world: PtrMut<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
-        let world = world .as_ref();
+        let world = world.as_ref();
         world.validate_non_send_access::<T>();
         world
             .get_populated_resource_column(state.0.component_id)

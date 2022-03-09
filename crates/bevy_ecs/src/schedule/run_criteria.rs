@@ -1,10 +1,11 @@
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration},
     component::ComponentId,
+    ptr::PtrMut,
     query::Access,
     schedule::{BoxedRunCriteriaLabel, GraphNode, RunCriteriaLabel},
     system::{BoxedSystem, IntoSystem, System},
-    world::World, ptr::PtrMut,
+    world::World,
 };
 use std::borrow::Cow;
 

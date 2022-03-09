@@ -1,9 +1,10 @@
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
+    ptr::PtrMut,
     query::Access,
     system::{IntoSystem, System},
-    world::World, ptr::PtrMut,
+    world::World,
 };
 use std::borrow::Cow;
 

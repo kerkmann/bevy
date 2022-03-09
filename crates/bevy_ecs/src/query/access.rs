@@ -112,8 +112,8 @@ impl<T: SparseSetIndex> Access<T> {
         } else if other.reads_all {
             self.writes.count_ones(..) == 0
         } else {
-            self.writes.is_disjoint(&other.reads_and_writes) &&
-            self.reads_and_writes.is_disjoint(&other.writes)
+            self.writes.is_disjoint(&other.reads_and_writes)
+                && self.reads_and_writes.is_disjoint(&other.writes)
         }
     }
 
@@ -131,13 +131,13 @@ impl<T: SparseSetIndex> Access<T> {
                 (false, false) => {
                     conflicts.extend(self.writes.intersection(&other.reads_and_writes));
                     conflicts.extend(self.reads_and_writes.intersection(&other.writes));
-                },
+                }
                 (false, true) => {
                     conflicts.extend(self.writes.ones());
-                },
+                }
                 (true, false) => {
                     conflicts.extend(other.writes.ones());
-                },
+                }
                 (true, true) => (),
             }
         }
@@ -208,8 +208,8 @@ impl<T: SparseSetIndex> FilteredAccess<T> {
         if self.access.is_compatible(&other.access) {
             true
         } else {
-            self.with.intersection(&other.without).next().is_some() ||
-            self.without.intersection(&other.with).next().is_some()
+            self.with.intersection(&other.without).next().is_some()
+                || self.without.intersection(&other.with).next().is_some()
         }
     }
 

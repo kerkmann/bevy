@@ -3,13 +3,14 @@ use bevy_utils::tracing::warn;
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
+    ptr::PtrMut,
     query::Access,
-    world::World, ptr::PtrMut,
+    world::World,
 };
 use std::borrow::Cow;
 
 /// Functions whose arguments all implement [`SystemParam`](crate::system::SystemParam).
-/// 
+///
 /// **Note**: Only systems with `In = ()` and `Out = ()` can be added to a [`Schedule`](crate::schedule::Schedule).
 /// Use [`SystemDescriptor`](crate::schedule::SystemDescriptor) to specify when a system runs relative to others.
 pub trait System: Send + Sync + 'static {
@@ -33,14 +34,14 @@ pub trait System: Send + Sync + 'static {
         unsafe { self.run_unchecked(input, PtrMut::from_mut(world)) }
     }
     /// Runs the system with the given `input` on `world`.
-    /// 
+    ///
     /// This method does not automatically register new archetypes.
     ///
     /// # Safety
-    /// 
+    ///
     /// Caller must ensure:
     /// - The given world is the same one that was used to construct the system.
-    /// - Systems do not concurrently access data in ways that violate Rust's 
+    /// - Systems do not concurrently access data in ways that violate Rust's
     /// rules for references.
     unsafe fn run_unchecked(&mut self, input: Self::In, world: PtrMut<World>) -> Self::Out;
     /// Applies deferred operations such as commands on the world.  

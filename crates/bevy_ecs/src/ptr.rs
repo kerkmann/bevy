@@ -1,7 +1,4 @@
-use std::{
-    marker::PhantomData,
-    ptr::NonNull,
-};
+use std::{marker::PhantomData, ptr::NonNull};
 
 use crate::world::World;
 
@@ -13,9 +10,7 @@ impl<'a, T> PtrMut<'a, T> {
     /// Constructs a `PtrMut<'a, T>` from `&'a mut T`.
     pub fn from_mut(value: &'a mut T) -> Self {
         // SAFETY: References are non-null.
-        unsafe {
-            Self(NonNull::new_unchecked(value), PhantomData)
-        }
+        unsafe { Self(NonNull::new_unchecked(value), PhantomData) }
     }
 
     /// Returns the underlying raw pointer.
@@ -24,9 +19,9 @@ impl<'a, T> PtrMut<'a, T> {
     }
 
     /// Returns a shared reference to `T`.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// Caller must ensure:
     /// - Pointee is a valid instance of `T`.
     /// - Pointee is not accessed in ways that violate Rust's rules for references.
@@ -35,9 +30,9 @@ impl<'a, T> PtrMut<'a, T> {
     }
 
     /// Returns mutable reference to a `T`.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// Caller must ensure:
     /// - Pointee is a valid instance of `T`.
     /// - Pointee is not accessed in ways that violate Rust's rules for references.
@@ -46,9 +41,9 @@ impl<'a, T> PtrMut<'a, T> {
     }
 
     /// Returns a shared reference to a `T`.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// Caller must ensure:
     /// - Pointee is a valid instance of `T`.
     /// - Pointee is not accessed in ways that violate Rust's rules for references.
@@ -57,9 +52,9 @@ impl<'a, T> PtrMut<'a, T> {
     }
 
     /// Returns mutable reference to a `T`.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// Caller must ensure:
     /// - Pointee is a valid instance of `T`.
     /// - Pointee is not accessed in ways that violate Rust's rules for references.

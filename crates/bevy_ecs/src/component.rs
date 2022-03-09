@@ -5,10 +5,7 @@ use crate::{
     system::Resource,
 };
 pub use bevy_ecs_macros::Component;
-use std::{
-    alloc::Layout,
-    any::TypeId,
-};
+use std::{alloc::Layout, any::TypeId};
 
 /// A component is data associated with an [`Entity`](crate::entity::Entity). Each entity can have
 /// multiple different types of components, but only one of them per type.

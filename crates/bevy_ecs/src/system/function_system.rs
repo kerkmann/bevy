@@ -1,12 +1,13 @@
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration, ArchetypeId},
     component::ComponentId,
+    ptr::PtrMut,
     query::{Access, FilteredAccessSet},
     system::{
         check_system_change_tick, ReadOnlySystemParamFetch, System, SystemParam, SystemParamFetch,
         SystemParamItem, SystemParamState,
     },
-    world::{World, WorldId}, ptr::PtrMut,
+    world::{World, WorldId},
 };
 use bevy_ecs_macros::all_tuples;
 use std::{borrow::Cow, marker::PhantomData};
@@ -187,8 +188,7 @@ impl<Param: SystemParam> SystemState<Param> {
     pub fn get<'w, 's>(
         &'s mut self,
         world: &'w mut World,
-    ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item
-    {
+    ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
         self.validate_world_and_update_archetypes(world);
         // SAFETY: The world is exclusively borrowed and the same one used to construct this state.
         unsafe { self.get_unchecked_manual(PtrMut::from_mut(world)) }
