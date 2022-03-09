@@ -101,9 +101,8 @@ impl SystemMeta {
 ///     Query<&MyComponent>,
 ///     )> = SystemState::new(&mut world);
 ///
-/// // Use system_state.get_mut(&mut world) and unpack your system parameters into variables!
-/// // system_state.get(&world) provides read-only versions of your system parameters instead.
-/// let (event_writer, maybe_resource, query) = system_state.get_mut(&mut world);
+/// // Use system_state.get(&mut world) and unpack your system parameters into variables!
+/// let (event_writer, maybe_resource, query) = system_state.get(&mut world);
 /// ```
 /// Caching:
 /// ```rust
@@ -126,7 +125,7 @@ impl SystemMeta {
 ///
 /// // Later, fetch the cached system state, saving on overhead
 /// world.resource_scope(|world, mut cached_state: Mut<CachedSystemState>| {
-///     let mut event_reader = cached_state.event_state.get_mut(world);
+///     let mut event_reader = cached_state.event_state.get(world);
 ///
 ///     for events in event_reader.iter(){
 ///         println!("Hello World!");
