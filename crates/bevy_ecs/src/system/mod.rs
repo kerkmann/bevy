@@ -744,7 +744,7 @@ mod tests {
     fn system_state_invalid_world() {
         let mut world = World::default();
         let mut system_state = SystemState::<Query<&A>>::new(&mut world);
-        let mismatched_world = World::default();
+        let mut mismatched_world = World::default();
         system_state.get(&mut mismatched_world);
     }
 
