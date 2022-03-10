@@ -550,6 +550,9 @@ impl<'w, 's> SystemParam for &'w World {
 
 unsafe impl<'w, 's> SystemParamState for WorldState {
     fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        // world could contain non-send resources, run on local thread
+        system_meta.set_non_send();
+
         let mut component_access = FilteredAccess::default();
         let id = world.init_component::<WorldMetadata>();
         component_access.add_read(id);
@@ -603,6 +606,9 @@ impl<'w, 's> SystemParam for &'w mut World {
 
 unsafe impl<'w, 's> SystemParamState for WorldMutState {
     fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        // world could contain non-send resources, run on local thread
+        system_meta.set_non_send();
+
         let mut component_access = FilteredAccess::default();
         let id = world.init_component::<WorldMetadata>();
         component_access.add_write(id);
