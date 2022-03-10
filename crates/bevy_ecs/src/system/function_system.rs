@@ -4,8 +4,8 @@ use crate::{
     ptr::PtrMut,
     query::{Access, FilteredAccessSet},
     system::{
-        check_system_change_tick, System, SystemParam, SystemParamFetch,
-        SystemParamItem, SystemParamState,
+        check_system_change_tick, System, SystemParam, SystemParamFetch, SystemParamItem,
+        SystemParamState,
     },
     world::{World, WorldId},
 };
@@ -156,6 +156,26 @@ impl<Param: SystemParam> SystemState<Param> {
         &self.meta
     }
 
+    /// Retrieves the [`SystemParam`] values from the given [`World`].
+    ///
+    /// This method automatically registers new archetypes.
+    #[inline]
+    pub fn get<'w, 's>(
+        &'s mut self,
+        world: &'w mut World,
+    ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
+        self.validate_world_and_update_archetypes(world);
+        // SAFETY: The world is exclusively borrowed and the same one used to construct this state.
+        unsafe { self.get_unchecked_manual(PtrMut::from_mut(world)) }
+    }
+
+    /// Applies any state queued by [`SystemParam`] values to the given [`World`].
+    ///
+    /// As an example, this will apply any commands queued using [`Commands`](`super::Commands`).
+    pub fn apply(&mut self, world: &mut World) {
+        self.param_state.apply(world);
+    }
+
     #[inline]
     pub fn matches_world(&self, world: &World) -> bool {
         self.world_id == world.id()
@@ -182,19 +202,6 @@ impl<Param: SystemParam> SystemState<Param> {
 
     /// Retrieves the [`SystemParam`] values from the given [`World`].
     ///
-    /// This method automatically registers new archetypes.
-    #[inline]
-    pub fn get<'w, 's>(
-        &'s mut self,
-        world: &'w mut World,
-    ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
-        self.validate_world_and_update_archetypes(world);
-        // SAFETY: The world is exclusively borrowed and the same one used to construct this state.
-        unsafe { self.get_unchecked_manual(PtrMut::from_mut(world)) }
-    }
-
-    /// Retrieves the [`SystemParam`] values from the given [`World`].
-    ///
     /// This method does not automatically register new archetypes.
     ///
     /// # Safety
@@ -216,13 +223,6 @@ impl<Param: SystemParam> SystemState<Param> {
         );
         self.meta.last_change_tick = change_tick;
         param
-    }
-
-    /// Applies any state queued by [`SystemParam`] values to the given [`World`].
-    ///
-    /// As an example, this will apply any commands queued using [`Commands`](`super::Commands`).
-    pub fn apply(&mut self, world: &mut World) {
-        self.param_state.apply(world);
     }
 }
 
