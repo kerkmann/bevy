@@ -1,65 +1,56 @@
-use std::{marker::PhantomData, ptr::NonNull};
+use std::cell::UnsafeCell;
 
 use crate::world::World;
 
 /// Pointer into memory with lifetime.
 /// Guaranteed to be correctly aligned, non-null and safe to write for a particular type.
-pub struct PtrMut<'a, T>(NonNull<T>, PhantomData<&'a ()>);
+pub struct PtrMut<'a, T>(&'a UnsafeCell<T>);
 
 impl<'a, T> PtrMut<'a, T> {
     /// Constructs a `PtrMut<'a, T>` from `&'a mut T`.
-    pub fn from_mut(value: &'a mut T) -> Self {
-        // SAFETY: References are non-null.
-        unsafe { Self(NonNull::new_unchecked(value), PhantomData) }
+    pub fn from_mut(value: &mut T) -> Self {
+        // SAFETY: `&mut` ensures unique access.
+        unsafe { Self(&*(value as *mut T as *const UnsafeCell<T>)) }
     }
 
-    /// Returns the underlying raw pointer.
-    pub fn inner(self) -> NonNull<T> {
-        self.0
-    }
-
-    /// Returns a shared reference to `T`.
+    /// Returns a shared reference to the `T`.
     ///
     /// # Safety
     ///
     /// Caller must ensure:
-    /// - Pointee is a valid instance of `T`.
-    /// - Pointee is not accessed in ways that violate Rust's rules for references.
+    /// - Value is not accessed in ways that violate Rust's rules for references.
     pub unsafe fn as_ref(self) -> &'a T {
         self.deref()
     }
 
-    /// Returns mutable reference to a `T`.
+    /// Returns mutable reference to the `T`.
     ///
     /// # Safety
     ///
     /// Caller must ensure:
-    /// - Pointee is a valid instance of `T`.
-    /// - Pointee is not accessed in ways that violate Rust's rules for references.
+    /// - Value is not accessed in ways that violate Rust's rules for references.
     pub unsafe fn as_mut(self) -> &'a mut T {
         self.deref_mut()
     }
 
-    /// Returns a shared reference to a `T`.
+    /// Returns a shared reference to the `T`.
     ///
     /// # Safety
     ///
     /// Caller must ensure:
-    /// - Pointee is a valid instance of `T`.
-    /// - Pointee is not accessed in ways that violate Rust's rules for references.
+    /// - Value is not accessed in ways that violate Rust's rules for references.
     pub unsafe fn deref(self) -> &'a T {
-        &*self.inner().as_ptr()
+        &*self.0.get()
     }
 
-    /// Returns mutable reference to a `T`.
+    /// Returns mutable reference to the `T`.
     ///
     /// # Safety
     ///
     /// Caller must ensure:
-    /// - Pointee is a valid instance of `T`.
-    /// - Pointee is not accessed in ways that violate Rust's rules for references.
+    /// - Value is not accessed in ways that violate Rust's rules for references.
     pub unsafe fn deref_mut(self) -> &'a mut T {
-        &mut *self.inner().as_ptr()
+        &mut *self.0.get()
     }
 }
 
@@ -67,7 +58,7 @@ impl<'a, T> PtrMut<'a, T> {
 impl<T> Copy for PtrMut<'_, T> {}
 impl<T> Clone for PtrMut<'_, T> {
     fn clone(&self) -> Self {
-        Self(self.0, self.1)
+        Self(self.0.clone())
     }
 }
 
