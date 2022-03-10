@@ -4,7 +4,7 @@ use crate::{
     ptr::PtrMut,
     query::{Access, FilteredAccessSet},
     system::{
-        check_system_change_tick, ReadOnlySystemParamFetch, System, SystemParam, SystemParamFetch,
+        check_system_change_tick, System, SystemParam, SystemParamFetch,
         SystemParamItem, SystemParamState,
     },
     world::{World, WorldId},
