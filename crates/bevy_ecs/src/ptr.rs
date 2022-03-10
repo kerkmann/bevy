@@ -20,26 +20,6 @@ impl<'a, T> PtrMut<'a, T> {
     /// Caller must ensure:
     /// - Value is not accessed in ways that violate Rust's rules for references.
     pub unsafe fn as_ref(self) -> &'a T {
-        self.deref()
-    }
-
-    /// Returns mutable reference to the `T`.
-    ///
-    /// # Safety
-    ///
-    /// Caller must ensure:
-    /// - Value is not accessed in ways that violate Rust's rules for references.
-    pub unsafe fn as_mut(self) -> &'a mut T {
-        self.deref_mut()
-    }
-
-    /// Returns a shared reference to the `T`.
-    ///
-    /// # Safety
-    ///
-    /// Caller must ensure:
-    /// - Value is not accessed in ways that violate Rust's rules for references.
-    pub unsafe fn deref(self) -> &'a T {
         &*self.0.get()
     }
 
@@ -49,7 +29,7 @@ impl<'a, T> PtrMut<'a, T> {
     ///
     /// Caller must ensure:
     /// - Value is not accessed in ways that violate Rust's rules for references.
-    pub unsafe fn deref_mut(self) -> &'a mut T {
+    pub unsafe fn as_mut(self) -> &'a mut T {
         &mut *self.0.get()
     }
 }
