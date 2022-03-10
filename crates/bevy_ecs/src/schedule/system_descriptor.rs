@@ -147,7 +147,7 @@ pub trait IntoSystemDescriptor<Params> {
     /// In the future, this method will be removed.
     #[deprecated(
         since = "0.7.0",
-        note = "`.exclusive_system()` is no longer needed, methods can convert these functions automatically"
+        note = "`.exclusive_system()` is no longer needed, bevy can convert these functions automatically"
     )]
     fn exclusive_system(self) -> SystemDescriptor;
 
