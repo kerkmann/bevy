@@ -166,7 +166,7 @@ impl<Param: SystemParam> SystemState<Param> {
     ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
         self.validate_world_and_update_archetypes(world);
         // SAFETY: The world is exclusively borrowed and the same one used to construct this state.
-        unsafe { self.get_unchecked_manual(SemiSafeCell::from_mut(world)) }
+        unsafe { self.get_unchecked(SemiSafeCell::from_mut(world)) }
     }
 
     /// Applies any state queued by [`SystemParam`] values to the given [`World`].
@@ -210,7 +210,7 @@ impl<Param: SystemParam> SystemState<Param> {
     /// - The given world is the same world used to construct the system state.
     /// - System states do not concurrently access data in ways that violate Rust's rules for references.
     #[inline]
-    pub unsafe fn get_unchecked_manual<'w, 's>(
+    pub unsafe fn get_unchecked<'w, 's>(
         &'s mut self,
         world: SemiSafeCell<'w, World>,
     ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
@@ -277,7 +277,7 @@ impl<P: SystemParam + 'static> System for ParamSystem<P> {
     }
 
     unsafe fn run_unchecked(&mut self, _input: Self::In, world: SemiSafeCell<World>) -> Self::Out {
-        let param = self.state.get_unchecked_manual(world);
+        let param = self.state.get_unchecked(world);
         (self.run)(param);
     }
 
