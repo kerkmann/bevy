@@ -105,8 +105,10 @@ impl<T: SparseSetIndex> Access<T> {
     /// Two `Access` instances are incompatible if one writes
     /// an index that the other writes or reads.
     pub fn is_compatible(&self, other: &Access<T>) -> bool {
-        if self.writes_all || other.writes_all {
-            false
+        if self.writes_all {
+            other.reads_and_writes.count_ones(..) == 0
+        } else if other.writes_all {
+            self.reads_and_writes.count_ones(..) == 0
         } else if self.reads_all {
             other.writes.count_ones(..) == 0
         } else if other.reads_all {

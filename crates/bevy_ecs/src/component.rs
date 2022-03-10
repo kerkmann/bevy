@@ -5,7 +5,10 @@ use crate::{
     system::Resource,
 };
 pub use bevy_ecs_macros::Component;
-use std::{alloc::Layout, any::TypeId};
+use std::{
+    alloc::Layout,
+    any::{Any, TypeId},
+};
 
 /// A component is data associated with an [`Entity`](crate::entity::Entity). Each entity can have
 /// multiple different types of components, but only one of them per type.
@@ -206,7 +209,7 @@ impl ComponentDescriptor {
         }
     }
 
-    fn new_non_send<T: std::any::Any>(storage_type: StorageType) -> Self {
+    fn new_non_send<T: Any>(storage_type: StorageType) -> Self {
         Self {
             name: std::any::type_name::<T>().to_string(),
             storage_type,
@@ -305,7 +308,7 @@ impl Components {
     }
 
     #[inline]
-    pub fn init_non_send<T: std::any::Any>(&mut self) -> ComponentId {
+    pub fn init_non_send<T: Any>(&mut self) -> ComponentId {
         // SAFE: The [`ComponentDescriptor`] matches the [`TypeId`]
         unsafe {
             self.get_or_insert_resource_with(TypeId::of::<T>(), || {
@@ -400,11 +403,16 @@ fn check_tick(last_change_tick: &mut u32, change_tick: u32) {
     }
 }
 
-/// A non-existent component "accessed" by systems with [`Commands`](crate::system::Commands), [`&World`](crate::world::World) or [`&mut World`](crate::world::World) parameters.
-///
-/// This is defined so that conflicting [`Access`](crate::query::Access) sets never have an empty intersection.
-pub(crate) struct Any;
+/// A non-existent component "accessed" by systems with params that borrow metadata on [`World`]:
+/// - [`Commands`](crate::system::Commands)
+/// - [`&World`](crate::world::World)
+/// - [`&mut World`](crate::world::World)
+/// - [`&Archetypes`](crate::archetype::Archetypes)
+/// - [`&Bundles`](crate::bundle::Bundles)
+/// - [`&Components`](crate::component::Components)
+/// - [`&Entities`](crate::entity::Entities)
+pub(crate) struct WorldMetadata;
 
-impl Component for Any {
+impl Component for WorldMetadata {
     type Storage = TableStorage;
 }

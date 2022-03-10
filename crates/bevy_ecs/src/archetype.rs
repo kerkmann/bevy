@@ -339,6 +339,9 @@ pub struct ArchetypeIdentity {
 pub struct ArchetypeComponentId(usize);
 
 impl ArchetypeComponentId {
+    // reserved index
+    pub const WORLD_METADATA: ArchetypeComponentId = ArchetypeComponentId(0);
+
     #[inline]
     pub const fn new(index: usize) -> Self {
         Self(index)
@@ -372,7 +375,7 @@ impl Default for Archetypes {
         let mut archetypes = Archetypes {
             archetypes: Vec::new(),
             archetype_ids: Default::default(),
-            archetype_component_count: 0,
+            archetype_component_count: 1,
         };
         archetypes.get_id_or_insert(TableId::empty(), Vec::new(), Vec::new());
 

@@ -1,14 +1,13 @@
 pub use crate::change_detection::{NonSendMut, ResMut};
 use crate::{
-    archetype::{Archetype, Archetypes},
+    archetype::{Archetype, ArchetypeComponentId, Archetypes},
     bundle::Bundles,
     change_detection::Ticks,
-    component::{Any, Component, ComponentId, ComponentTicks, Components},
+    component::{Component, ComponentId, ComponentTicks, Components, WorldMetadata},
     entity::{Entities, Entity},
     ptr::PtrMut,
     query::{
-        Access, FilterFetch, FilteredAccess, FilteredAccessSet, QueryState, ReadOnlyFetch,
-        WorldQuery,
+        FilterFetch, FilteredAccess, FilteredAccessSet, QueryState, ReadOnlyFetch, WorldQuery,
     },
     system::{CommandQueue, Commands, Query, SystemMeta},
     world::{FromWorld, World},
@@ -497,7 +496,7 @@ unsafe impl ReadOnlySystemParamFetch for CommandQueue {}
 unsafe impl SystemParamState for CommandQueue {
     fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
         let mut component_access = FilteredAccess::default();
-        let id = world.init_component::<Any>();
+        let id = world.init_component::<WorldMetadata>();
         component_access.add_read(id);
 
         // conflict with &mut World (if &mut World appears first)
@@ -515,6 +514,10 @@ unsafe impl SystemParamState for CommandQueue {
 
         // conflict with &mut World (if it Commands appears first)
         system_meta.component_access_set.add(component_access);
+        // make sure executor sees conflict with another system having &mut World
+        system_meta
+            .archetype_component_access
+            .add_read(ArchetypeComponentId::WORLD_METADATA);
 
         Default::default()
     }
@@ -548,7 +551,7 @@ impl<'w, 's> SystemParam for &'w World {
 unsafe impl<'w, 's> SystemParamState for WorldState {
     fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
         let mut component_access = FilteredAccess::default();
-        let id = world.init_component::<Any>();
+        let id = world.init_component::<WorldMetadata>();
         component_access.add_read(id);
         component_access.read_all();
 
@@ -565,6 +568,10 @@ unsafe impl<'w, 's> SystemParamState for WorldState {
         }
 
         system_meta.component_access_set.add(component_access);
+        // make sure executor sees conflict with another system having &mut World
+        system_meta
+            .archetype_component_access
+            .add_read(ArchetypeComponentId::WORLD_METADATA);
         // prevent executor from concurrently running any systems that write
         system_meta.archetype_component_access.read_all();
 
@@ -597,7 +604,7 @@ impl<'w, 's> SystemParam for &'w mut World {
 unsafe impl<'w, 's> SystemParamState for WorldMutState {
     fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
         let mut component_access = FilteredAccess::default();
-        let id = world.init_component::<Any>();
+        let id = world.init_component::<WorldMetadata>();
         component_access.add_write(id);
         component_access.write_all();
 
@@ -614,6 +621,10 @@ unsafe impl<'w, 's> SystemParamState for WorldMutState {
         }
 
         system_meta.component_access_set.add(component_access);
+        // make sure executor sees conflict with another system reading World metadata
+        system_meta
+            .archetype_component_access
+            .add_write(ArchetypeComponentId::WORLD_METADATA);
         // prevent executor from concurrently running other systems
         system_meta.archetype_component_access.write_all();
 
@@ -646,7 +657,7 @@ impl<'w, 's> SystemParam for Exclusive {
 unsafe impl<'w, 's> SystemParamState for ExclusiveState {
     fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
         let mut component_access = FilteredAccess::default();
-        let id = world.init_component::<Any>();
+        let id = world.init_component::<WorldMetadata>();
         component_access.add_read(id);
         component_access.read_all();
 
@@ -677,7 +688,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for ExclusiveState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        _world: PtrMut<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         ()
@@ -1172,7 +1183,31 @@ pub struct ArchetypesState;
 
 // SAFE: no component value access
 unsafe impl SystemParamState for ArchetypesState {
-    fn init(_world: &mut World, _system_meta: &mut SystemMeta) -> Self {
+    fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        let mut component_access = FilteredAccess::default();
+        let id = world.init_component::<WorldMetadata>();
+        component_access.add_read(id);
+
+        // conflict with &mut World (if &mut World appears first)
+        if !system_meta
+            .component_access_set
+            .get_conflicts(&component_access)
+            .is_empty()
+        {
+            panic!(
+                "Archetypes conflicts with another system param in {}. \
+                Archetypes and &mut World cannot appear in the same signature.",
+                system_meta.name,
+            );
+        }
+
+        // conflict with &mut World (if it Archetypes appears first)
+        system_meta.component_access_set.add(component_access);
+        // make sure executor sees conflict with another system having &mut World
+        system_meta
+            .archetype_component_access
+            .add_read(ArchetypeComponentId::WORLD_METADATA);
+
         Self
     }
 }
@@ -1203,7 +1238,31 @@ pub struct ComponentsState;
 
 // SAFE: no component value access
 unsafe impl SystemParamState for ComponentsState {
-    fn init(_world: &mut World, _system_meta: &mut SystemMeta) -> Self {
+    fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        let mut component_access = FilteredAccess::default();
+        let id = world.init_component::<WorldMetadata>();
+        component_access.add_read(id);
+
+        // conflict with &mut World (if &mut World appears first)
+        if !system_meta
+            .component_access_set
+            .get_conflicts(&component_access)
+            .is_empty()
+        {
+            panic!(
+                "Components conflicts with another system param in {}. \
+                Components and &mut World cannot appear in the same signature.",
+                system_meta.name,
+            );
+        }
+
+        // conflict with &mut World (if it Components appears first)
+        system_meta.component_access_set.add(component_access);
+        // make sure executor sees conflict with another system having &mut World
+        system_meta
+            .archetype_component_access
+            .add_read(ArchetypeComponentId::WORLD_METADATA);
+
         Self
     }
 }
@@ -1234,7 +1293,31 @@ pub struct EntitiesState;
 
 // SAFE: no component value access
 unsafe impl SystemParamState for EntitiesState {
-    fn init(_world: &mut World, _system_meta: &mut SystemMeta) -> Self {
+    fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        let mut component_access = FilteredAccess::default();
+        let id = world.init_component::<WorldMetadata>();
+        component_access.add_read(id);
+
+        // conflict with &mut World (if &mut World appears first)
+        if !system_meta
+            .component_access_set
+            .get_conflicts(&component_access)
+            .is_empty()
+        {
+            panic!(
+                "Entities conflicts with another system param in {}. \
+                Entities and &mut World cannot appear in the same signature.",
+                system_meta.name,
+            );
+        }
+
+        // conflict with &mut World (if it Entities appears first)
+        system_meta.component_access_set.add(component_access);
+        // make sure executor sees conflict with another system having &mut World
+        system_meta
+            .archetype_component_access
+            .add_read(ArchetypeComponentId::WORLD_METADATA);
+
         Self
     }
 }
@@ -1265,7 +1348,31 @@ pub struct BundlesState;
 
 // SAFE: no component value access
 unsafe impl SystemParamState for BundlesState {
-    fn init(_world: &mut World, _system_meta: &mut SystemMeta) -> Self {
+    fn init(world: &mut World, system_meta: &mut SystemMeta) -> Self {
+        let mut component_access = FilteredAccess::default();
+        let id = world.init_component::<WorldMetadata>();
+        component_access.add_read(id);
+
+        // conflict with &mut World (if &mut World appears first)
+        if !system_meta
+            .component_access_set
+            .get_conflicts(&component_access)
+            .is_empty()
+        {
+            panic!(
+                "Bundles conflicts with another system param in {}. \
+                Bundles and &mut World cannot appear in the same signature.",
+                system_meta.name,
+            );
+        }
+
+        // conflict with &mut World (if it Bundles appears first)
+        system_meta.component_access_set.add(component_access);
+        // make sure executor sees conflict with another system having &mut World
+        system_meta
+            .archetype_component_access
+            .add_read(ArchetypeComponentId::WORLD_METADATA);
+
         Self
     }
 }
