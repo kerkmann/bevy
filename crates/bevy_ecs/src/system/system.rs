@@ -9,7 +9,7 @@ use crate::{
 };
 use std::borrow::Cow;
 
-/// Functions whose arguments all implement [`SystemParam`](crate::system::SystemParam).
+/// Types produced by functions whose arguments all implement [`SystemParam`](crate::system::SystemParam).
 ///
 /// **Note**: Only systems with `In = ()` and `Out = ()` can be added to a [`Schedule`](crate::schedule::Schedule).
 /// Use [`SystemDescriptor`](crate::schedule::SystemDescriptor) to specify when a system runs relative to others.
@@ -22,7 +22,7 @@ pub trait System: Send + Sync + 'static {
     fn name(&self) -> Cow<'static, str>;
     /// Updates the archetype component [`Access`] of the system to account for `archetype`.
     fn new_archetype(&mut self, archetype: &Archetype);
-    /// Returns the system's current component [`Access`].
+    /// Returns the system's component [`Access`].
     fn component_access(&self) -> &Access<ComponentId>;
     /// Returns the system's current archetype component [`Access`].
     fn archetype_component_access(&self) -> &Access<ArchetypeComponentId>;

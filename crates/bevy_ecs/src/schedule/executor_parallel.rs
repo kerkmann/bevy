@@ -1,8 +1,9 @@
 use crate::{
     archetype::{ArchetypeComponentId, ArchetypeGeneration},
+    ptr::SemiSafeCell,
     query::Access,
     schedule::{ParallelSystemContainer, ParallelSystemExecutor},
-    world::World, ptr::SemiSafeCell,
+    world::World,
 };
 use async_channel::{Receiver, Sender};
 use bevy_tasks::{ComputeTaskPool, Scope, TaskPool};
