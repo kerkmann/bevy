@@ -1201,8 +1201,8 @@ unsafe impl SystemParamState for ArchetypesState {
             .is_empty()
         {
             panic!(
-                "Archetypes conflicts with another system param in {}. \
-                Archetypes and &mut World cannot appear in the same signature.",
+                "&Archetypes conflicts with another system param in {}. \
+                &Archetypes and &mut World cannot appear in the same signature.",
                 system_meta.name,
             );
         }
@@ -1256,8 +1256,8 @@ unsafe impl SystemParamState for ComponentsState {
             .is_empty()
         {
             panic!(
-                "Components conflicts with another system param in {}. \
-                Components and &mut World cannot appear in the same signature.",
+                "&Components conflicts with another system param in {}. \
+                &Components and &mut World cannot appear in the same signature.",
                 system_meta.name,
             );
         }
@@ -1311,8 +1311,8 @@ unsafe impl SystemParamState for EntitiesState {
             .is_empty()
         {
             panic!(
-                "Entities conflicts with another system param in {}. \
-                Entities and &mut World cannot appear in the same signature.",
+                "&Entities conflicts with another system param in {}. \
+                &Entities and &mut World cannot appear in the same signature.",
                 system_meta.name,
             );
         }
@@ -1366,8 +1366,8 @@ unsafe impl SystemParamState for BundlesState {
             .is_empty()
         {
             panic!(
-                "Bundles conflicts with another system param in {}. \
-                Bundles and &mut World cannot appear in the same signature.",
+                "&Bundles conflicts with another system param in {}. \
+                &Bundles and &mut World cannot appear in the same signature.",
                 system_meta.name,
             );
         }
