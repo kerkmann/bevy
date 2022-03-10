@@ -1,11 +1,11 @@
-use crate::{archetype::ArchetypeGeneration, schedule::ParallelSystemContainer, world::World};
+use crate::{archetype::ArchetypeGeneration, schedule::FunctionSystemContainer, world::World};
 use downcast_rs::{impl_downcast, Downcast};
 
 pub trait ParallelSystemExecutor: Downcast + Send + Sync {
     /// Called by `SystemStage` whenever `systems` have been changed.
-    fn rebuild_cached_data(&mut self, systems: &[ParallelSystemContainer]);
+    fn rebuild_cached_data(&mut self, systems: &[FunctionSystemContainer]);
 
-    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World);
+    fn run_systems(&mut self, systems: &mut [FunctionSystemContainer], world: &mut World);
 }
 
 impl_downcast!(ParallelSystemExecutor);
@@ -23,9 +23,9 @@ impl Default for SingleThreadedExecutor {
     }
 }
 impl ParallelSystemExecutor for SingleThreadedExecutor {
-    fn rebuild_cached_data(&mut self, _: &[ParallelSystemContainer]) {}
+    fn rebuild_cached_data(&mut self, _: &[FunctionSystemContainer]) {}
 
-    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
+    fn run_systems(&mut self, systems: &mut [FunctionSystemContainer], world: &mut World) {
         self.update_archetypes(systems, world);
 
         for system in systems {
@@ -43,7 +43,7 @@ impl ParallelSystemExecutor for SingleThreadedExecutor {
 impl SingleThreadedExecutor {
     /// Calls `system.new_archetype()` for each archetype added since the last call to
     /// `update_archetypes` and updates cached `archetype_component_access`.
-    fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
+    fn update_archetypes(&mut self, systems: &mut [FunctionSystemContainer], world: &World) {
         let archetypes = world.archetypes();
         let new_generation = archetypes.generation();
         let old_generation = std::mem::replace(&mut self.archetype_generation, new_generation);

@@ -626,6 +626,9 @@ unsafe impl<'w, 's> SystemParamState for WorldMutState {
             );
         }
 
+        // this is temporary, see #4166
+        system_meta.set_exclusive();
+
         system_meta.component_access_set.add(component_access);
         // make sure schedule builder sees conflict with another system reading World metadata
         system_meta

@@ -2,7 +2,7 @@ use crate::{
     archetype::{ArchetypeComponentId, ArchetypeGeneration},
     ptr::SemiSafeCell,
     query::Access,
-    schedule::{ParallelSystemContainer, ParallelSystemExecutor},
+    schedule::{FunctionSystemContainer, ParallelSystemExecutor},
     world::World,
 };
 use async_channel::{Receiver, Sender};
@@ -78,7 +78,7 @@ impl Default for ParallelExecutor {
 }
 
 impl ParallelSystemExecutor for ParallelExecutor {
-    fn rebuild_cached_data(&mut self, systems: &[ParallelSystemContainer]) {
+    fn rebuild_cached_data(&mut self, systems: &[FunctionSystemContainer]) {
         self.system_metadata.clear();
         self.queued.grow(systems.len());
         self.running.grow(systems.len());
@@ -86,8 +86,12 @@ impl ParallelSystemExecutor for ParallelExecutor {
 
         // Construct scheduling data for systems.
         for container in systems.iter() {
-            let dependencies_total = container.dependencies().len();
             let system = container.system();
+            if system.is_exclusive() {
+                panic!("this executor does not support systems with the `&mut World` param");
+            }
+
+            let dependencies_total = container.dependencies().len();
             let (start_sender, start_receiver) = async_channel::bounded(1);
             self.system_metadata.push(SystemSchedulingMetadata {
                 start_sender,
@@ -107,7 +111,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
         }
     }
 
-    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
+    fn run_systems(&mut self, systems: &mut [FunctionSystemContainer], world: &mut World) {
         #[cfg(test)]
         if self.events_sender.is_none() {
             let (sender, receiver) = async_channel::unbounded::<SchedulingEvent>();
@@ -157,7 +161,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
 impl ParallelExecutor {
     /// Calls `system.new_archetype()` for each archetype added since the last call to
     /// `update_archetypes` and updates cached `archetype_component_access`.
-    fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
+    fn update_archetypes(&mut self, systems: &mut [FunctionSystemContainer], world: &World) {
         #[cfg(feature = "trace")]
         let span = bevy_utils::tracing::info_span!("update_archetypes");
         #[cfg(feature = "trace")]
@@ -183,7 +187,7 @@ impl ParallelExecutor {
     fn prepare_systems<'world: 'scope, 'scope>(
         &mut self,
         scope: &mut Scope<'scope, ()>,
-        systems: &'scope mut [ParallelSystemContainer],
+        systems: &'scope mut [FunctionSystemContainer],
         world: SemiSafeCell<'world, World>,
     ) {
         #[cfg(feature = "trace")]

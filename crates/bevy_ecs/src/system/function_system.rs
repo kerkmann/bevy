@@ -17,10 +17,13 @@ pub struct SystemMeta {
     pub(crate) name: Cow<'static, str>,
     pub(crate) component_access_set: FilteredAccessSet<ComponentId>,
     pub(crate) archetype_component_access: Access<ArchetypeComponentId>,
-    // NOTE: this must be kept private. making a SystemMeta non-send is irreversible to prevent
-    // SystemParams from overriding each other
-    is_send: bool,
     pub(crate) last_change_tick: u32,
+    // NOTE: This field must be kept private. Making a `SystemMeta` non-`Send` is irreversible to
+    // prevent multiple system params from toggling it.
+    is_send: bool,
+    // NOTE: This field was a tempoary measure to remove `.exclusive_system()` without disturbing
+    // the rest of the existing API. See #4166.
+    is_exclusive: bool,
 }
 
 impl SystemMeta {
@@ -29,8 +32,9 @@ impl SystemMeta {
             name: std::any::type_name::<T>().into(),
             archetype_component_access: Access::default(),
             component_access_set: FilteredAccessSet::default(),
-            is_send: true,
             last_change_tick: 0,
+            is_send: true,
+            is_exclusive: false,
         }
     }
 
@@ -46,6 +50,16 @@ impl SystemMeta {
     #[inline]
     pub fn set_non_send(&mut self) {
         self.is_send = false;
+    }
+
+    #[inline]
+    pub(crate) fn is_exclusive(&self) -> bool {
+        self.is_exclusive
+    }
+
+    #[inline]
+    pub(crate) fn set_exclusive(&mut self) {
+        self.is_exclusive = true;
     }
 
     #[inline]
@@ -292,6 +306,10 @@ impl<P: SystemParam + 'static> System for ParamSystem<P> {
     fn check_change_tick(&mut self, change_tick: u32) {
         self.state.meta.check_change_tick(change_tick);
     }
+
+    fn is_exclusive(&self) -> bool {
+        self.state.meta.is_exclusive()
+    }
 }
 
 /// Conversion trait to turn something into a [`System`].
@@ -487,6 +505,11 @@ where
             change_tick,
             self.system_meta.name.as_ref(),
         );
+    }
+
+    #[inline]
+    fn is_exclusive(&self) -> bool {
+        self.system_meta.is_exclusive()
     }
 }
 

@@ -106,6 +106,10 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
         self.system_a.check_change_tick(change_tick);
         self.system_b.check_change_tick(change_tick);
     }
+
+    fn is_exclusive(&self) -> bool {
+        self.system_a.is_exclusive() || self.system_b.is_exclusive()
+    }
 }
 
 /// An extension trait providing the [`IntoChainSystem::chain`] method for convenient [`System`]

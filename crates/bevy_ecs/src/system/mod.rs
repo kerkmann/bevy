@@ -67,7 +67,6 @@
 //! - [`()` (unit primitive type)](https://doc.rust-lang.org/stable/std/primitive.unit.html)
 
 mod commands;
-mod exclusive_system;
 mod function_system;
 mod query;
 #[allow(clippy::module_inception)]
@@ -76,7 +75,6 @@ mod system_chaining;
 mod system_param;
 
 pub use commands::*;
-pub use exclusive_system::*;
 pub use function_system::*;
 pub use query::*;
 pub use system::*;
@@ -101,9 +99,9 @@ mod tests {
         component::{Component, Components},
         entity::{Entities, Entity},
         query::{Added, Changed, Or, QueryState, With, Without},
-        schedule::{Schedule, Stage, SystemStage},
+        schedule::{IntoSystemDescriptor, Schedule, Stage, SystemStage},
         system::{
-            IntoExclusiveSystem, IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet,
+            IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet,
             RemovedComponents, Res, ResMut, System, SystemState,
         },
         world::{FromWorld, World},
