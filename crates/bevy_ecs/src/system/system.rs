@@ -20,11 +20,11 @@ pub trait System: Send + Sync + 'static {
     type Out;
     /// Returns the system's name.
     fn name(&self) -> Cow<'static, str>;
-    /// Updates the runtime access of the system to account for `archetype`.
+    /// Updates the archetype component [`Access`] of the system to account for `archetype`.
     fn new_archetype(&mut self, archetype: &Archetype);
-    /// Returns the system's runtime component [`Access`].
+    /// Returns the system's current component [`Access`].
     fn component_access(&self) -> &Access<ComponentId>;
-    /// Returns the system's runtime archetype component [`Access`].
+    /// Returns the system's current archetype component [`Access`].
     fn archetype_component_access(&self) -> &Access<ArchetypeComponentId>;
     /// Returns true if the system is [`Send`].
     fn is_send(&self) -> bool;
@@ -34,8 +34,6 @@ pub trait System: Send + Sync + 'static {
         unsafe { self.run_unchecked(input, PtrMut::from_mut(world)) }
     }
     /// Runs the system with the given `input` on `world`.
-    ///
-    /// This method does not automatically register new archetypes.
     ///
     /// # Safety
     ///
@@ -51,7 +49,7 @@ pub trait System: Send + Sync + 'static {
     fn check_change_tick(&mut self, change_tick: u32);
 }
 
-/// Convenient alias for a boxed [`System`] trait object.
+/// A convenient alias for a boxed [`System`] trait object.
 pub type BoxedSystem<In = (), Out = ()> = Box<dyn System<In = In, Out = Out>>;
 
 pub(crate) fn check_system_change_tick(
