@@ -1,7 +1,7 @@
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration},
     component::ComponentId,
-    ptr::PtrMut,
+    ptr::SemiSafeCell,
     query::Access,
     schedule::{BoxedRunCriteriaLabel, GraphNode, RunCriteriaLabel},
     system::{BoxedSystem, IntoSystem, System},
@@ -429,7 +429,7 @@ impl System for RunOnce {
         true
     }
 
-    unsafe fn run_unchecked(&mut self, _input: (), _world: PtrMut<World>) -> ShouldRun {
+    unsafe fn run_unchecked(&mut self, _input: (), _world: SemiSafeCell<World>) -> ShouldRun {
         if self.ran {
             ShouldRun::No
         } else {

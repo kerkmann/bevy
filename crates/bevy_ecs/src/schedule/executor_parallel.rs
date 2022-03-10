@@ -2,7 +2,7 @@ use crate::{
     archetype::{ArchetypeComponentId, ArchetypeGeneration},
     query::Access,
     schedule::{ParallelSystemContainer, ParallelSystemExecutor},
-    world::World, ptr::PtrMut,
+    world::World, ptr::SemiSafeCell,
 };
 use async_channel::{Receiver, Sender};
 use bevy_tasks::{ComputeTaskPool, Scope, TaskPool};
@@ -120,7 +120,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
             .get_resource_or_insert_with(|| ComputeTaskPool(TaskPool::default()))
             .clone();
         compute_pool.scope(|scope| {
-            self.prepare_systems(scope, systems, PtrMut::from_mut(world));
+            self.prepare_systems(scope, systems, SemiSafeCell::from_mut(world));
             let parallel_executor = async {
                 // All systems have been ran if there are no queued or running systems.
                 while 0 != self.queued.count_ones(..) + self.running.count_ones(..) {
@@ -183,7 +183,7 @@ impl ParallelExecutor {
         &mut self,
         scope: &mut Scope<'scope, ()>,
         systems: &'scope mut [ParallelSystemContainer],
-        world: PtrMut<'world, World>,
+        world: SemiSafeCell<'world, World>,
     ) {
         #[cfg(feature = "trace")]
         let span = bevy_utils::tracing::info_span!("prepare_systems");

@@ -5,7 +5,7 @@ use crate::{
     change_detection::Ticks,
     component::{Component, ComponentId, ComponentTicks, Components, WorldMetadata},
     entity::{Entities, Entity},
-    ptr::PtrMut,
+    ptr::SemiSafeCell,
     query::{
         FilterFetch, FilteredAccess, FilteredAccessSet, QueryState, ReadOnlyFetch, WorldQuery,
     },
@@ -82,7 +82,7 @@ pub trait SystemParamFetch<'world, 'state>: SystemParamState {
     unsafe fn get_param(
         state: &'state mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'world, World>,
+        world: SemiSafeCell<'world, World>,
         change_tick: u32,
     ) -> Self::Item;
 }
@@ -146,7 +146,7 @@ where
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         Query::new(
@@ -314,7 +314,7 @@ impl<'w, 's, T: Resource> SystemParamFetch<'w, 's> for ResState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         let column = world
@@ -360,7 +360,7 @@ impl<'w, 's, T: Resource> SystemParamFetch<'w, 's> for OptionResState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         world
@@ -423,7 +423,7 @@ impl<'w, 's, T: Resource> SystemParamFetch<'w, 's> for ResMutState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         let value = world
@@ -468,7 +468,7 @@ impl<'w, 's, T: Resource> SystemParamFetch<'w, 's> for OptionResMutState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         world
@@ -534,7 +534,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for CommandQueue {
     unsafe fn get_param(
         state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         Commands::new(state, world.as_ref())
@@ -587,7 +587,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for WorldState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         world.as_ref()
@@ -643,7 +643,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for WorldMutState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         world.as_mut()
@@ -694,7 +694,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for ExclusiveState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        _world: PtrMut<'w, World>,
+        _world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         ()
@@ -794,7 +794,7 @@ impl<'w, 's, T: Resource + FromWorld> SystemParamFetch<'w, 's> for LocalState<T>
     unsafe fn get_param(
         state: &'s mut Self,
         _system_meta: &SystemMeta,
-        _world: PtrMut<'w, World>,
+        _world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         Local(&mut state.0)
@@ -877,7 +877,7 @@ impl<'w, 's, T: Component> SystemParamFetch<'w, 's> for RemovedComponentsState<T
     unsafe fn get_param(
         state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         RemovedComponents {
@@ -999,7 +999,7 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for NonSendState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         let world = world.as_ref();
@@ -1047,7 +1047,7 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for OptionNonSendState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         let world = world.as_ref();
@@ -1113,7 +1113,7 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for NonSendMutState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         let world = world.as_ref();
@@ -1159,7 +1159,7 @@ impl<'w, 's, T: 'static> SystemParamFetch<'w, 's> for OptionNonSendMutState<T> {
     unsafe fn get_param(
         state: &'s mut Self,
         system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         let world = world.as_ref();
@@ -1225,7 +1225,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for ArchetypesState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         world.as_ref().archetypes()
@@ -1280,7 +1280,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for ComponentsState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         world.as_ref().components()
@@ -1335,7 +1335,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for EntitiesState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         world.as_ref().entities()
@@ -1390,7 +1390,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for BundlesState {
     unsafe fn get_param(
         _state: &'s mut Self,
         _system_meta: &SystemMeta,
-        world: PtrMut<'w, World>,
+        world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
         world.as_ref().bundles()
@@ -1425,7 +1425,7 @@ impl<'w, 's> SystemParamFetch<'w, 's> for SystemChangeTickState {
     unsafe fn get_param(
         _state: &'s mut Self,
         system_meta: &SystemMeta,
-        _world: PtrMut<'w, World>,
+        _world: SemiSafeCell<'w, World>,
         change_tick: u32,
     ) -> Self::Item {
         SystemChangeTick {
@@ -1454,7 +1454,7 @@ macro_rules! impl_system_param_tuple {
             unsafe fn get_param(
                 state: &'s mut Self,
                 system_meta: &SystemMeta,
-                world: PtrMut<'w, World>,
+                world: SemiSafeCell<'w, World>,
                 change_tick: u32,
             ) -> Self::Item {
 

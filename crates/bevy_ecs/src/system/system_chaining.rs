@@ -1,7 +1,7 @@
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
-    ptr::PtrMut,
+    ptr::SemiSafeCell,
     query::Access,
     system::{IntoSystem, System},
     world::World,
@@ -83,7 +83,7 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
         self.system_a.is_send() && self.system_b.is_send()
     }
 
-    unsafe fn run_unchecked(&mut self, input: Self::In, world: PtrMut<World>) -> Self::Out {
+    unsafe fn run_unchecked(&mut self, input: Self::In, world: SemiSafeCell<World>) -> Self::Out {
         let out = self.system_a.run_unchecked(input, world);
         self.system_b.run_unchecked(out, world)
     }
