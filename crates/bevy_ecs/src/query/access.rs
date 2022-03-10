@@ -125,10 +125,15 @@ impl<T: SparseSetIndex> Access<T> {
 
         // If there's an `&mut World` anywhere, everything conflicts.
         // If there's an `&World` anywhere, every write on the other side conflicts.
-        if self.writes_all || other.writes_all {
+        if self.writes_all {
             conflicts.extend(other.reads_and_writes.ones());
+        }
+
+        if other.writes_all {
             conflicts.extend(self.reads_and_writes.ones());
-        } else {
+        }
+        
+        if !(self.writes_all || other.writes_all) {
             match (self.reads_all, other.reads_all) {
                 (false, false) => {
                     conflicts.extend(self.writes.intersection(&other.reads_and_writes));
