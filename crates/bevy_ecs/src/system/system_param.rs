@@ -575,7 +575,7 @@ unsafe impl<'w, 's> SystemParamState for WorldState {
         system_meta
             .archetype_component_access
             .add_read(ArchetypeComponentId::WORLD_METADATA);
-        // prevent executor from concurrently running any systems that write
+        // prevent executor from concurrently running any systems that mutably borrow data
         system_meta.archetype_component_access.read_all();
 
         WorldState
@@ -631,7 +631,7 @@ unsafe impl<'w, 's> SystemParamState for WorldMutState {
         system_meta
             .archetype_component_access
             .add_write(ArchetypeComponentId::WORLD_METADATA);
-        // prevent executor from concurrently running other systems
+        // prevent executor from concurrently running other systems that borrow data
         system_meta.archetype_component_access.write_all();
 
         WorldMutState
@@ -682,7 +682,7 @@ unsafe impl<'w, 's> SystemParamState for ExclusiveState {
 
         // conflict with &mut World (if Exclusive appears first)
         system_meta.component_access_set.add(component_access);
-        // prevent executor from concurrently running other systems
+        // prevent executor from concurrently running other systems that borrow data
         system_meta.archetype_component_access.write_all();
 
         ExclusiveState
@@ -700,6 +700,9 @@ impl<'w, 's> SystemParamFetch<'w, 's> for ExclusiveState {
         ()
     }
 }
+
+/// SAFETY: Exclusive does not borrow anything.
+unsafe impl ReadOnlySystemParamFetch for ExclusiveState {}
 
 /// A system local [`SystemParam`].
 ///
