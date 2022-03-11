@@ -1,7 +1,7 @@
 use crate::{
     schedule::{
-        IntoSystemDescriptor, RunCriteriaDescriptor, RunCriteriaDescriptorCoercion,
-        RunCriteriaLabel, ShouldRun, SystemSet,
+        RunCriteriaDescriptor, RunCriteriaDescriptorCoercion, RunCriteriaLabel, ShouldRun,
+        SystemSet,
     },
     system::{In, IntoChainSystem, Local, Res, ResMut},
 };

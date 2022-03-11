@@ -700,7 +700,6 @@ impl<'w, 's> SystemParamFetch<'w, 's> for ExclusiveState {
         _world: SemiSafeCell<'w, World>,
         _change_tick: u32,
     ) -> Self::Item {
-        ()
     }
 }
 

@@ -101,8 +101,8 @@ mod tests {
         query::{Added, Changed, Or, QueryState, With, Without},
         schedule::{IntoSystemDescriptor, Schedule, Stage, SystemStage},
         system::{
-            IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet,
-            RemovedComponents, Res, ResMut, System, SystemState,
+            IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet, RemovedComponents, Res,
+            ResMut, System, SystemState,
         },
         world::{FromWorld, World},
     };
@@ -148,7 +148,7 @@ mod tests {
             world.spawn().insert(A);
 
             let mut count = 0;
-            for _ in world.query::<&A>().iter(&world) {
+            for _ in world.query::<&A>().iter(world) {
                 count += 1;
             }
 

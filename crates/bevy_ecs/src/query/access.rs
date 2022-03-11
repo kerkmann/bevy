@@ -132,7 +132,7 @@ impl<T: SparseSetIndex> Access<T> {
         if other.writes_all {
             conflicts.extend(self.reads_and_writes.ones());
         }
-        
+
         if !(self.writes_all || other.writes_all) {
             match (self.reads_all, other.reads_all) {
                 (false, false) => {

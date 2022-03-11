@@ -222,7 +222,7 @@ impl SystemStage {
             if let Some(name) = descriptor
                 .run_criteria
                 .as_ref()
-                .and_then(|_| Some(descriptor.system.name()))
+                .map(|_| descriptor.system.name())
             {
                 panic!(
                     "The system {} has a run criteria, but its `SystemSet` also has a run \
@@ -626,7 +626,7 @@ fn process_systems(
 
 /// Returns vector containing all pairs of indices of systems with ambiguous execution order,
 /// along with specific components that have triggered the warning.
-/// 
+///
 /// Systems must be topologically sorted beforehand.
 fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<ComponentId>)> {
     let mut ambiguity_set_labels = HashMap::default();
@@ -634,7 +634,7 @@ fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<
         let set_index = ambiguity_set_labels.len();
         ambiguity_set_labels.entry(set_label).or_insert(set_index);
     }
-    
+
     let n = systems.len();
     let mut ambiguity_sets = vec![FixedBitSet::with_capacity(ambiguity_set_labels.len()); n];
     for (i, system) in systems.iter().enumerate() {
@@ -656,8 +656,9 @@ fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<
     }
 
     for i in (0..n).rev() {
-        let deps = dependents[i].ones().collect::<Vec<_>>();
-        for dep in deps.into_iter() {
+        let mut deps = FixedBitSet::with_capacity(n);
+        deps.union_with(&dependents[i]);
+        for dep in deps.ones() {
             let downstream = dependents[dep].ones().collect();
             dependents[i].union_with(&downstream);
         }
@@ -1817,13 +1818,31 @@ mod tests {
         assert_eq!(find_ambiguities(&stage.exclusive_at_start).len(), 0);
 
         let mut stage = SystemStage::parallel()
-            .with_system(component.exclusive_system().label("0").before("1").before("3"))
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("0")
+                    .before("1")
+                    .before("3"),
+            )
             .with_system(component.exclusive_system().label("1"))
             .with_system(component.exclusive_system().label("2").after("1"))
             .with_system(component.exclusive_system().label("3"))
-            .with_system(component.exclusive_system().label("4").after("3").before("5"))
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("4")
+                    .after("3")
+                    .before("5"),
+            )
             .with_system(component.exclusive_system().label("5"))
-            .with_system(component.exclusive_system().label("6").after("2").after("5"));
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("6")
+                    .after("2")
+                    .after("5"),
+            );
         stage.initialize_systems(&mut world);
         stage.rebuild_orders_and_dependencies();
         let ambiguities = find_ambiguities_first_labels(&stage.exclusive_at_start);
@@ -1854,13 +1873,46 @@ mod tests {
         assert_eq!(ambiguities.len(), 6);
 
         let mut stage = SystemStage::parallel()
-            .with_system(component.exclusive_system().label("0").before("1").before("3"))
-            .with_system(component.exclusive_system().label("1").in_ambiguity_set("a"))
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("0")
+                    .before("1")
+                    .before("3"),
+            )
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("1")
+                    .in_ambiguity_set("a"),
+            )
             .with_system(component.exclusive_system().label("2").after("1"))
-            .with_system(component.exclusive_system().label("3").in_ambiguity_set("a"))
-            .with_system(component.exclusive_system().label("4").after("3").before("5"))
-            .with_system(component.exclusive_system().label("5").in_ambiguity_set("a"))
-            .with_system(component.exclusive_system().label("6").after("2").after("5"));
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("3")
+                    .in_ambiguity_set("a"),
+            )
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("4")
+                    .after("3")
+                    .before("5"),
+            )
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("5")
+                    .in_ambiguity_set("a"),
+            )
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("6")
+                    .after("2")
+                    .after("5"),
+            );
         stage.initialize_systems(&mut world);
         stage.rebuild_orders_and_dependencies();
         let ambiguities = find_ambiguities_first_labels(&stage.exclusive_at_start);
@@ -1883,10 +1935,30 @@ mod tests {
         assert_eq!(ambiguities.len(), 4);
 
         let mut stage = SystemStage::parallel()
-            .with_system(component.exclusive_system().label("0").in_ambiguity_set("a"))
-            .with_system(component.exclusive_system().label("1").in_ambiguity_set("a"))
-            .with_system(component.exclusive_system().label("2").in_ambiguity_set("a"))
-            .with_system(component.exclusive_system().label("3").in_ambiguity_set("a"));
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("0")
+                    .in_ambiguity_set("a"),
+            )
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("1")
+                    .in_ambiguity_set("a"),
+            )
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("2")
+                    .in_ambiguity_set("a"),
+            )
+            .with_system(
+                component
+                    .exclusive_system()
+                    .label("3")
+                    .in_ambiguity_set("a"),
+            );
         stage.initialize_systems(&mut world);
         stage.rebuild_orders_and_dependencies();
         let ambiguities = find_ambiguities_first_labels(&stage.exclusive_at_start);

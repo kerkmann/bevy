@@ -29,13 +29,13 @@ pub mod prelude {
         event::{EventReader, EventWriter},
         query::{Added, AnyOf, ChangeTrackers, Changed, Or, QueryState, With, Without},
         schedule::{
-            AmbiguitySetLabel, IntoSystemDescriptor,
-            RunCriteria, RunCriteriaDescriptorCoercion, RunCriteriaLabel, RunCriteriaPiping,
-            Schedule, Stage, StageLabel, State, SystemLabel, SystemSet, SystemStage,
+            AmbiguitySetLabel, IntoSystemDescriptor, RunCriteria, RunCriteriaDescriptorCoercion,
+            RunCriteriaLabel, RunCriteriaPiping, Schedule, Stage, StageLabel, State, SystemLabel,
+            SystemSet, SystemStage,
         },
         system::{
-            Commands, In, IntoChainSystem, IntoSystem, Local, NonSend,
-            NonSendMut, Query, QuerySet, RemovedComponents, Res, ResMut, System,
+            Commands, In, IntoChainSystem, IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet,
+            RemovedComponents, Res, ResMut, System,
         },
         world::{FromWorld, Mut, World},
     };

@@ -34,7 +34,7 @@ impl<'a, T> SemiSafeCell<'a, T> {
 impl<T> Copy for SemiSafeCell<'_, T> {}
 impl<T> Clone for SemiSafeCell<'_, T> {
     fn clone(&self) -> Self {
-        Self(self.0.clone())
+        Self(self.0)
     }
 }
 
