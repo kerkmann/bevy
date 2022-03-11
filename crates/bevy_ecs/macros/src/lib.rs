@@ -265,7 +265,7 @@ pub fn impl_query_set(_input: TokenStream) -> TokenStream {
                 unsafe fn get_param(
                     state: &'s mut Self,
                     system_meta: &SystemMeta,
-                    world: SemiSafeCell<'w, World>,
+                    world: &SemiSafeCell<'w, World>,
                     change_tick: u32,
                 ) -> Self::Item {
                     QuerySet {
@@ -407,7 +407,7 @@ pub fn derive_system_param(input: TokenStream) -> TokenStream {
             unsafe fn get_param(
                 state: &'s mut Self,
                 system_meta: &#path::system::SystemMeta,
-                world: #path::ptr::SemiSafeCell<'w, #path::world::World>,
+                world: &#path::ptr::SemiSafeCell<'w, #path::world::World>,
                 change_tick: u32,
             ) -> Self::Item {
                 #struct_name {

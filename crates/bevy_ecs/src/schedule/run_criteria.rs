@@ -429,7 +429,7 @@ impl System for RunOnce {
         true
     }
 
-    unsafe fn run_unchecked(&mut self, _input: (), _world: SemiSafeCell<World>) -> ShouldRun {
+    unsafe fn run_unchecked(&mut self, _input: (), _world: &SemiSafeCell<World>) -> ShouldRun {
         if self.ran {
             ShouldRun::No
         } else {

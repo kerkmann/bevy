@@ -180,7 +180,7 @@ impl<Param: SystemParam> SystemState<Param> {
     ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
         self.validate_world_and_update_archetypes(world);
         // SAFETY: The world is exclusively borrowed and the same one used to construct this state.
-        unsafe { self.get_unchecked(SemiSafeCell::from_mut(world)) }
+        unsafe { self.get_unchecked(&SemiSafeCell::from_mut(world)) }
     }
 
     /// Applies any state queued by [`SystemParam`] values to the given [`World`].
@@ -226,7 +226,7 @@ impl<Param: SystemParam> SystemState<Param> {
     #[inline]
     pub unsafe fn get_unchecked<'w, 's>(
         &'s mut self,
-        world: SemiSafeCell<'w, World>,
+        world: &SemiSafeCell<'w, World>,
     ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
         let change_tick = world.as_ref().increment_change_tick();
         let param = <Param::Fetch as SystemParamFetch>::get_param(
@@ -290,7 +290,7 @@ impl<P: SystemParam + 'static> System for ParamSystem<P> {
         self.state.meta().is_send()
     }
 
-    unsafe fn run_unchecked(&mut self, _input: Self::In, world: SemiSafeCell<World>) -> Self::Out {
+    unsafe fn run_unchecked(&mut self, _input: Self::In, world: &SemiSafeCell<World>) -> Self::Out {
         let param = self.state.get_unchecked(world);
         (self.run)(param);
     }
@@ -471,7 +471,7 @@ where
     }
 
     #[inline]
-    unsafe fn run_unchecked(&mut self, input: Self::In, world: SemiSafeCell<World>) -> Self::Out {
+    unsafe fn run_unchecked(&mut self, input: Self::In, world: &SemiSafeCell<World>) -> Self::Out {
         let change_tick = world.as_ref().increment_change_tick();
         let out = self.func.run(
             input,
@@ -528,7 +528,7 @@ pub trait SystemParamFunction<In, Out, Params: SystemParam, Marker>: Send + Sync
         input: In,
         state: &mut Params::Fetch,
         system_meta: &SystemMeta,
-        world: SemiSafeCell<World>,
+        world: &SemiSafeCell<World>,
         change_tick: u32,
     ) -> Out;
 }
@@ -551,7 +551,7 @@ macro_rules! impl_system_function {
                 _input: (),
                 state: &mut <($($param,)*) as SystemParam>::Fetch,
                 system_meta: &SystemMeta,
-                world: SemiSafeCell<World>,
+                world: &SemiSafeCell<World>,
                 change_tick: u32,
             ) -> Out {
                 // Yes, this is strange, but rustc fails to compile this impl
@@ -589,7 +589,7 @@ macro_rules! impl_system_function {
                 input: Input,
                 state: &mut <($($param,)*) as SystemParam>::Fetch,
                 system_meta: &SystemMeta,
-                world: SemiSafeCell<World>,
+                world: &SemiSafeCell<World>,
                 change_tick: u32,
             ) -> Out {
                 #[allow(clippy::too_many_arguments)]

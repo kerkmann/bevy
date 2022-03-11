@@ -31,7 +31,7 @@ pub trait System: Send + Sync + 'static {
     /// Runs the system with the given `input` on `world`.
     fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
         // SAFETY: The world is exclusively borrowed.
-        unsafe { self.run_unchecked(input, SemiSafeCell::from_mut(world)) }
+        unsafe { self.run_unchecked(input, &SemiSafeCell::from_mut(world)) }
     }
     /// Runs the system with the given `input` on `world`.
     ///
@@ -41,7 +41,7 @@ pub trait System: Send + Sync + 'static {
     /// - The given world is the same one that was used to construct the system.
     /// - Systems do not concurrently access data in ways that violate Rust's
     /// rules for references.
-    unsafe fn run_unchecked(&mut self, input: Self::In, world: SemiSafeCell<World>) -> Self::Out;
+    unsafe fn run_unchecked(&mut self, input: Self::In, world: &SemiSafeCell<World>) -> Self::Out;
     /// Applies deferred operations such as commands on the world.  
     fn apply_buffers(&mut self, world: &mut World);
     /// Initialize the system.
