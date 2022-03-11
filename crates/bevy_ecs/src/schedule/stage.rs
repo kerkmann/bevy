@@ -49,7 +49,7 @@ impl_downcast!(Stage);
 pub struct ReportExecutionOrderAmbiguities;
 
 /// Stores and executes systems.
-/// 
+///
 /// System execution order is undefined unless specified using [`SystemDescriptor`] methods.
 pub struct SystemStage {
     /// The WorldId this stage was last run on.
@@ -781,8 +781,19 @@ impl Stage for SystemStage {
                             name = &*container.name()
                         );
                         #[cfg(feature = "trace")]
-                        let _guard = system_span.enter();
+                        let system_guard = system_span.enter();
                         container.system_mut().run((), world);
+                        #[cfg(feature = "trace")]
+                        drop(system_guard);
+
+                        #[cfg(feature = "trace")]
+                        let command_span = bevy_utils::tracing::info_span!(
+                            "system_commands",
+                            name = &*container.name()
+                        );
+                        #[cfg(feature = "trace")]
+                        let _command_guard = command_span.enter();
+                        container.system_mut().apply_buffers(world);
                     }
                 }
 
@@ -803,8 +814,19 @@ impl Stage for SystemStage {
                             name = &*container.name()
                         );
                         #[cfg(feature = "trace")]
-                        let _guard = system_span.enter();
+                        let system_guard = system_span.enter();
                         container.system_mut().run((), world);
+                        #[cfg(feature = "trace")]
+                        drop(system_guard);
+
+                        #[cfg(feature = "trace")]
+                        let command_span = bevy_utils::tracing::info_span!(
+                            "system_commands",
+                            name = &*container.name()
+                        );
+                        #[cfg(feature = "trace")]
+                        let _command_guard = command_span.enter();
+                        container.system_mut().apply_buffers(world);
                     }
                 }
 
@@ -833,8 +855,19 @@ impl Stage for SystemStage {
                             name = &*container.name()
                         );
                         #[cfg(feature = "trace")]
-                        let _guard = system_span.enter();
+                        let system_guard = system_span.enter();
                         container.system_mut().run((), world);
+                        #[cfg(feature = "trace")]
+                        drop(system_guard);
+
+                        #[cfg(feature = "trace")]
+                        let command_span = bevy_utils::tracing::info_span!(
+                            "system_commands",
+                            name = &*container.name()
+                        );
+                        #[cfg(feature = "trace")]
+                        let _command_guard = command_span.enter();
+                        container.system_mut().apply_buffers(world);
                     }
                 }
 
