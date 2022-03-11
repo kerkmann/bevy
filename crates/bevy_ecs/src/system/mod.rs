@@ -47,24 +47,26 @@
 //! # System parameter list
 //! Following is the complete list of accepted types as system parameters:
 //!
-//! - [`Query`]
-//! - [`Res`] and `Option<Res>`
-//! - [`ResMut`] and `Option<ResMut>`
+//! - [`Query<...>`](Query)
+//! - [`QuerySet<Q1, ...>`](QuerySet)
+//! - [`Res<T>`] and ([`Option<Res<T>>`](Res))
+//! - [`ResMut<T>`] and ([`Option<ResMut<T>>`](ResMut)) 
+//! - [`NonSend<T>`] and ([`Option<NonSend<T>>`](NonSend))
+//! - [`NonSendMut<T>`] and ([`Option<NonSendMut<T>>`](NonSendMut))
 //! - [`Commands`]
-//! - [`Local`]
 //! - [`EventReader`](crate::event::EventReader)
 //! - [`EventWriter`](crate::event::EventWriter)
-//! - [`NonSend`] and `Option<NonSend>`
-//! - [`NonSendMut`] and `Option<NonSendMut>`
+//! - [`Local<T>`]
 //! - [`&World`](crate::world::World)
-//! - [`RemovedComponents`]
+//! - [`&mut World`](crate::world::World)
+//! - [`&Entities`](crate::entity::Entities)
+//! - [`&Components`](crate::component::Components)
+//! - [`&Bundles`](crate::bundle::Bundles)
+//! - [`&Archetypes`](crate::archetype::Archetypes)
+//! - [`RemovedComponents<T>`]
 //! - [`SystemChangeTick`]
-//! - [`Archetypes`](crate::archetype::Archetypes) (Provides Archetype metadata)
-//! - [`Bundles`](crate::bundle::Bundles) (Provides Bundles metadata)
-//! - [`Components`](crate::component::Components) (Provides Components metadata)
-//! - [`Entities`](crate::entity::Entities) (Provides Entities metadata)
-//! - All tuples between 1 to 16 elements where each element implements [`SystemParam`]
 //! - [`()` (unit primitive type)](https://doc.rust-lang.org/stable/std/primitive.unit.html)
+//! - Tuples with up to 16 [`SystemParam`] elements
 
 mod commands;
 mod function_system;
