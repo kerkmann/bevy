@@ -142,6 +142,25 @@ mod tests {
         system.run((), &mut world);
     }
 
+    #[test]
+    fn mut_world_system() {
+        let mut system = IntoSystem::into_system(|world: &mut World| {
+            world.spawn().insert(A);
+
+            let mut count = 0;
+            for _ in world.query::<&A>().iter(&world) {
+                count += 1;
+            }
+
+            count
+        });
+
+        let mut world = World::new();
+        system.initialize(&mut world);
+        let count = system.run((), &mut world);
+        assert_eq!(count, 1);
+    }
+
     fn run_system<Param, S: IntoSystem<(), (), Param>>(world: &mut World, system: S) {
         let mut schedule = Schedule::default();
         let mut update = SystemStage::parallel();
