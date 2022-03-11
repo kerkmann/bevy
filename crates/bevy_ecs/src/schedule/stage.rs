@@ -626,77 +626,76 @@ fn process_systems(
 
 /// Returns vector containing all pairs of indices of systems with ambiguous execution order,
 /// along with specific components that have triggered the warning.
+/// 
 /// Systems must be topologically sorted beforehand.
 fn find_ambiguities(systems: &[impl SystemContainer]) -> Vec<(usize, usize, Vec<ComponentId>)> {
     let mut ambiguity_set_labels = HashMap::default();
-    for set in systems.iter().flat_map(|c| c.ambiguity_sets()) {
-        let len = ambiguity_set_labels.len();
-        ambiguity_set_labels.entry(set).or_insert(len);
+    for set_label in systems.iter().flat_map(|sys| sys.ambiguity_sets()) {
+        let set_index = ambiguity_set_labels.len();
+        ambiguity_set_labels.entry(set_label).or_insert(set_index);
     }
-    let mut all_ambiguity_sets = Vec::<FixedBitSet>::with_capacity(systems.len());
-    let mut all_dependencies = Vec::<FixedBitSet>::with_capacity(systems.len());
-    let mut all_dependants = Vec::<FixedBitSet>::with_capacity(systems.len());
-    for (index, container) in systems.iter().enumerate() {
-        let mut ambiguity_sets = FixedBitSet::with_capacity(ambiguity_set_labels.len());
-        for set in container.ambiguity_sets() {
-            ambiguity_sets.insert(ambiguity_set_labels[set]);
+    
+    let n = systems.len();
+    let mut ambiguity_sets = vec![FixedBitSet::with_capacity(ambiguity_set_labels.len()); n];
+    for (i, system) in systems.iter().enumerate() {
+        for set_label in system.ambiguity_sets() {
+            ambiguity_sets[i].insert(ambiguity_set_labels[set_label]);
         }
-        all_ambiguity_sets.push(ambiguity_sets);
-        let mut dependencies = FixedBitSet::with_capacity(systems.len());
-        for &dependency in container.dependencies() {
-            dependencies.union_with(&all_dependencies[dependency]);
-            dependencies.insert(dependency);
-            all_dependants[dependency].insert(index);
-        }
+    }
 
-        all_dependants.push(FixedBitSet::with_capacity(systems.len()));
-        all_dependencies.push(dependencies);
-    }
-    for index in (0..systems.len()).rev() {
-        let mut dependants = FixedBitSet::with_capacity(systems.len());
-        for dependant in all_dependants[index].ones() {
-            dependants.union_with(&all_dependants[dependant]);
-            dependants.insert(dependant);
+    let mut dependencies = vec![FixedBitSet::with_capacity(n); n];
+    let mut dependents = vec![FixedBitSet::with_capacity(n); n];
+
+    for (i, system) in systems.iter().enumerate() {
+        for &dep in system.dependencies() {
+            let upstream = dependencies[dep].ones().collect();
+            dependencies[i].union_with(&upstream);
+            dependencies[i].insert(dep);
+            dependents[dep].insert(i);
         }
-        all_dependants[index] = dependants;
     }
-    let mut all_relations = all_dependencies
+
+    for i in (0..n).rev() {
+        let deps = dependents[i].ones().collect::<Vec<_>>();
+        for dep in deps.into_iter() {
+            let downstream = dependents[dep].ones().collect();
+            dependents[i].union_with(&downstream);
+        }
+    }
+
+    let mut relations = vec![FixedBitSet::with_capacity(n); n];
+    dependencies
         .drain(..)
-        .zip(all_dependants.drain(..))
+        .zip(dependents.drain(..))
         .enumerate()
-        .map(|(index, (dependencies, dependants))| {
-            let mut relations = FixedBitSet::with_capacity(systems.len());
-            relations.union_with(&dependencies);
-            relations.union_with(&dependants);
-            relations.insert(index);
-            relations
-        })
-        .collect::<Vec<FixedBitSet>>();
+        .for_each(|(i, (dependencies, dependants))| {
+            relations[i].union_with(&dependencies);
+            relations[i].union_with(&dependants);
+            relations[i].insert(i);
+        });
+
+    let full_set: FixedBitSet = (0..n).collect(); // all 1s
+    let mut processed = FixedBitSet::with_capacity(n);
     let mut ambiguities = Vec::new();
-    let full_bitset: FixedBitSet = (0..systems.len()).collect();
-    let mut processed = FixedBitSet::with_capacity(systems.len());
-    for (index_a, relations) in all_relations.drain(..).enumerate() {
-        // TODO: prove that `.take(index_a)` would be correct here, and uncomment it if so.
-        for index_b in full_bitset.difference(&relations)
-        // .take(index_a)
-        {
-            if !processed.contains(index_b)
-                && all_ambiguity_sets[index_a].is_disjoint(&all_ambiguity_sets[index_b])
-            {
-                let a_access = systems[index_a].component_access();
-                let b_access = systems[index_b].component_access();
-                if let (Some(a), Some(b)) = (a_access, b_access) {
-                    let conflicts = a.get_conflicts(b);
+    for (a, set) in relations.drain(..).enumerate() {
+        for b in full_set.difference(&set) {
+            // a and b have indeterminate run order
+            if !processed.contains(b) && ambiguity_sets[a].is_disjoint(&ambiguity_sets[b]) {
+                if let (Some(a_access), Some(b_access)) =
+                    (systems[a].component_access(), systems[b].component_access())
+                {
+                    let conflicts = a_access.get_conflicts(b_access);
                     if !conflicts.is_empty() {
-                        ambiguities.push((index_a, index_b, conflicts));
+                        ambiguities.push((a, b, conflicts));
                     }
                 } else {
-                    ambiguities.push((index_a, index_b, Vec::new()));
+                    ambiguities.push((a, b, Vec::new()));
                 }
             }
         }
-        processed.insert(index_a);
+        processed.insert(a);
     }
+
     ambiguities
 }
 
