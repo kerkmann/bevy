@@ -58,7 +58,11 @@ impl<T: SparseSetIndex> Access<T> {
 
     /// Returns true if this `Access` contains a write access for the given index.
     pub fn has_write(&self, index: T) -> bool {
-        self.writes.contains(index.sparse_set_index())
+        if self.writes_all {
+            true
+        } else {
+            self.writes.contains(index.sparse_set_index())
+        }
     }
 
     /// Sets this `Access` as having read access to all indexed elements.
@@ -68,7 +72,7 @@ impl<T: SparseSetIndex> Access<T> {
 
     /// Returns `true` if this `Access` has read access to all indexed elements.
     #[inline]
-    pub fn reads_all(&self) -> bool {
+    pub fn has_read_all(&self) -> bool {
         self.reads_all
     }
 
@@ -80,7 +84,7 @@ impl<T: SparseSetIndex> Access<T> {
 
     /// Returns `true` if this `Access` has write access to all indexed elements.
     #[inline]
-    pub fn writes_all(&self) -> bool {
+    pub fn has_write_all(&self) -> bool {
         self.writes_all
     }
 
