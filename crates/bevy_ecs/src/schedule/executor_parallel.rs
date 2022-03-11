@@ -466,11 +466,15 @@ mod tests {
             receive_events(&world),
             vec![StartedSystems(1), StartedSystems(1),]
         );
+        // made &World non-Send to be able to read non-Send resources
         let mut stage = SystemStage::parallel()
             .with_system(wants_world)
             .with_system(wants_world);
         stage.run(&mut world);
-        assert_eq!(receive_events(&world), vec![StartedSystems(2),]);
+        assert_eq!(
+            receive_events(&world),
+            vec![StartedSystems(1), StartedSystems(1),]
+        );
     }
 
     #[test]

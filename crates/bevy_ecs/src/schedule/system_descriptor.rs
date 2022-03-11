@@ -141,7 +141,7 @@ pub trait IntoSystemDescriptor<Params> {
 
     /// This method was formerly required to add systems with `&mut World` arguments to an `App`.
     ///
-    /// However, since [#4166](https://github.com/bevyengine/bevy/pull/4166),
+    /// However, as of [#4166](https://github.com/bevyengine/bevy/pull/4166),
     /// this is no longer required.
     ///
     /// In the future, this method will be removed.
