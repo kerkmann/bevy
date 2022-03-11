@@ -21,19 +21,16 @@ pub(crate) enum SystemType {
 
 pub struct SystemLabelMarker;
 
-/// Encapsulates a system and information on when it run in a `SystemStage`.
+/// Encapsulates a system and information on when it should run within a [`SystemStage`](crate::schedule::SystemStage).
 ///
-/// Systems can be inserted into 4 different groups within the stage:
-/// * Parallel, accepts non-exclusive systems.
-/// * At start, accepts exclusive systems; runs before parallel systems.
-/// * Before commands, accepts exclusive systems; runs after parallel systems, but before their
-/// command buffers are applied.
-/// * At end, accepts exclusive systems; runs after parallel systems' command buffers have
-/// been applied.
+/// A system can be inserted into one of four phases within a stage:
+/// - **At start**: Runs systems sequentially, before the systems in **parallel**.
+/// - **Parallel**: Runs systems concurrently, when possible. (Systems that borrow [`&mut World`](crate::world::World) cannot be inserted here).
+/// - **Before commands**, Runs systems sequentially, before the commands queued by systems in **parallel** are applied.
+/// - **At end**, Runs systems sequentially, after the commands queued by systems in **parallel** have been applied.
 ///
-/// Systems can have one or more labels attached to them; other systems in the same group
-/// can then specify that they have to run before or after systems with that label using the
-/// `before` and `after` methods.
+/// A system may have zero or many labels. Systems can specify their order relative to other systems
+/// *in the same phase* using the [`.before()`](SystemDescriptor::before) and [`.after()`](SystemDescriptor::after) methods.
 ///
 /// # Example
 /// ```

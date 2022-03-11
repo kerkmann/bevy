@@ -18,7 +18,7 @@ use std::fmt::Debug;
 
 use super::{IntoSystemDescriptor, SystemType};
 
-/// A type that can run as a step of a [`Schedule`](super::Schedule).
+/// Types that can run as steps in a [`Schedule`](super::Schedule).
 pub trait Stage: Downcast + Send + Sync {
     /// Runs the stage; this happens once per update.
     /// Implementors must initialize all of their state and systems before running the first time.
@@ -48,8 +48,9 @@ impl_downcast!(Stage);
 /// to have unambiguous order with regards to a group of already-constrained systems.
 pub struct ReportExecutionOrderAmbiguities;
 
-/// Stores and executes systems. Execution order is not defined unless explicitly specified;
-/// see `SystemDescriptor` documentation.
+/// Stores and executes systems.
+/// 
+/// System execution order is undefined unless specified using [`SystemDescriptor`] methods.
 pub struct SystemStage {
     /// The WorldId this stage was last run on.
     world_id: Option<WorldId>,

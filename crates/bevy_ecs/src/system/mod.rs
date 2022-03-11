@@ -55,7 +55,7 @@
 //! 
 //! # Composing systems
 //! 
-//! There are a few tools to arrange a group of systems to run:
+//! To run a collection of systems in some particular order, there are a few tools:
 //!
 //! - [`Schedule`](crate::schedule::Schedule): A linear sequence of stages.
 //! - [`Stage`](crate::schedule::SystemStage): Define hard sync boundaries. Queued [`Commands`] are applied on completion.
