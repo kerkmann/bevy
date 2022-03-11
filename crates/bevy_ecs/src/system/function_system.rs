@@ -172,7 +172,7 @@ impl<Param: SystemParam> SystemState<Param> {
 
     /// Retrieves the [`SystemParam`] values from the given [`World`].
     ///
-    /// This method automatically registers new archetypes.
+    /// This method also ensures the cached access is up-to-date before retrieving the data.
     #[inline]
     pub fn get<'w, 's>(
         &'s mut self,
@@ -216,13 +216,13 @@ impl<Param: SystemParam> SystemState<Param> {
 
     /// Retrieves the [`SystemParam`] values from the given [`World`].
     ///
-    /// This method does not automatically register new archetypes.
+    /// This method does _not_ update the system state's cached access before retrieving the data.
     ///
     /// # Safety
     ///
     /// Caller must ensure:
     /// - The given world is the same world used to construct the system state.
-    /// - System states do not concurrently access data in ways that violate Rust's rules for references.
+    /// - There are no active references that conflict with the system state's access. Mutable access must be unique.
     #[inline]
     pub unsafe fn get_unchecked<'w, 's>(
         &'s mut self,
@@ -520,12 +520,12 @@ where
 //
 // This trait requires the generic `Params` because, as far as Rust knows, a type could have
 // more than one impl of `FnMut`, even though functions and closures don't.
-pub trait SystemParamFunction<In, Out, Params: SystemParam, Marker>: Send + Sync + 'static {
+pub trait SystemParamFunction<In, Out, Params: SystemParam, Marker>: Send + Sync + 'static { 
     /// # Safety
     ///
     /// Caller must ensure:
-    /// - The given parameter `state` was constructed from the given `world`.
-    /// - Parameter states do not concurrently access data in ways that violate Rust's rules for references.
+    /// - That `state` was constructed from the given `world`.
+    /// - There are no active references that conflict with `state`'s access. Mutable access must be unique.
     unsafe fn run(
         &mut self,
         input: In,

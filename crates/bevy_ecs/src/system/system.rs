@@ -37,12 +37,13 @@ pub trait System: Send + Sync + 'static {
     }
     /// Runs the system with the given `input` on `world`.
     ///
+    /// This method does _not_ update the system's cached access before retrieving the data.
+    /// 
     /// # Safety
     ///
     /// Caller must ensure:
-    /// - The given world is the same one that was used to construct the system.
-    /// - Systems do not concurrently access data in ways that violate Rust's
-    /// rules for references.
+    /// - The given world is the same world used to construct the system.
+    /// - There are no active references that conflict with the system's access. Mutable access must be unique.
     unsafe fn run_unchecked(&mut self, input: Self::In, world: &SemiSafeCell<World>) -> Self::Out;
     /// Applies deferred operations such as commands on the world.  
     fn apply_buffers(&mut self, world: &mut World);
