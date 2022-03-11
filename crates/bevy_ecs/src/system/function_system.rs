@@ -395,11 +395,14 @@ impl<In, Out, Sys: System<In = In, Out = Out>> IntoSystem<In, Out, AlreadyWasSys
 pub struct In<In>(pub In);
 pub struct InputMarker;
 
-/// The [`System`] counter part of an ordinary function.
+/// The [`System`]-type of functions and closures.
 ///
-/// You get this by calling [`IntoSystem::system`]  on a function that only accepts
-/// [`SystemParam`]s. The output of the system becomes the functions return type, while the input
-/// becomes the functions [`In`] tagged parameter or `()` if no such parameter exists.
+/// Constructed by calling [`IntoSystem::into_system`] with a function or closure whose arguments all implement
+/// [`SystemParam`].
+///
+/// If the function's first argument is [`In<T>`], `T` becomes the system's [`In`](crate::system::System::In) type, 
+/// `()` otherwise.
+/// The function's return type becomes the system's [`Out`](crate::system::System::Out) type.
 pub struct FunctionSystem<In, Out, Param, Marker, F>
 where
     Param: SystemParam,

@@ -9,10 +9,12 @@ use crate::{
 };
 use std::borrow::Cow;
 
-/// Types converted from functions whose arguments all implement [`SystemParam`](crate::system::SystemParam).
+/// An ECS system, typically converted from functions and closures whose arguments all implement
+/// [`SystemParam`](crate::system::SystemParam).
 ///
 /// **Note**: Only systems with `In = ()` and `Out = ()` can be added to a [`Schedule`](crate::schedule::Schedule).
-/// Use [`SystemDescriptor`](crate::schedule::SystemDescriptor) to specify when a system runs relative to others.
+/// When constructing a `Schedule`, use a [`SystemDescriptor`](crate::schedule::SystemDescriptor) to
+/// specify when a system runs relative to others.
 pub trait System: Send + Sync + 'static {
     /// The input to the system.
     type In;
