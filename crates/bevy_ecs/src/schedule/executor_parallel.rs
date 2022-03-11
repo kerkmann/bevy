@@ -126,7 +126,6 @@ impl ParallelSystemExecutor for ParallelExecutor {
             .clone();
 
         let world = SemiSafeCell::from_mut(world);
-        
         compute_pool.scope(|scope| {
             self.prepare_systems(scope, systems, &world);
             let parallel_executor = async {

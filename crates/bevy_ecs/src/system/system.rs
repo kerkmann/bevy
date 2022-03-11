@@ -38,7 +38,7 @@ pub trait System: Send + Sync + 'static {
     /// Runs the system with the given `input` on `world`.
     ///
     /// This method does _not_ update the system's cached access before retrieving the data.
-    /// 
+    ///
     /// # Safety
     ///
     /// Caller must ensure:

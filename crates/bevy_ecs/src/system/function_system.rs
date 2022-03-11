@@ -400,7 +400,7 @@ pub struct InputMarker;
 /// Constructed by calling [`IntoSystem::into_system`] with a function or closure whose arguments all implement
 /// [`SystemParam`].
 ///
-/// If the function's first argument is [`In<T>`], `T` becomes the system's [`In`](crate::system::System::In) type, 
+/// If the function's first argument is [`In<T>`], `T` becomes the system's [`In`](crate::system::System::In) type,
 /// `()` otherwise.
 /// The function's return type becomes the system's [`Out`](crate::system::System::Out) type.
 pub struct FunctionSystem<In, Out, Param, Marker, F>
@@ -520,7 +520,7 @@ where
 //
 // This trait requires the generic `Params` because, as far as Rust knows, a type could have
 // more than one impl of `FnMut`, even though functions and closures don't.
-pub trait SystemParamFunction<In, Out, Params: SystemParam, Marker>: Send + Sync + 'static { 
+pub trait SystemParamFunction<In, Out, Params: SystemParam, Marker>: Send + Sync + 'static {
     /// # Safety
     ///
     /// Caller must ensure:

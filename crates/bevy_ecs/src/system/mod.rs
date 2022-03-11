@@ -1,8 +1,8 @@
 //! Systems are functions that can access data stored in a [`World`](crate::world::World)
 //! and control application behavior.
-//! 
+//!
 //! # Examples
-//! 
+//!
 //! ```
 //! # use bevy_ecs::prelude::*;
 //! #
@@ -25,9 +25,9 @@
 //! }
 //! # bevy_ecs::system::assert_is_system(update_score_system);
 //! ```
-//! 
+//!
 //! # Constructing systems
-//! 
+//!
 //! Any function or closure whose arguments all implement the [`SystemParam`] trait can be automatically
 //! converted into a system:
 //!
@@ -52,9 +52,9 @@
 //! - [`In<T>`] (must be first argument in function)
 //! - [`()`](https://doc.rust-lang.org/stable/std/primitive.unit.html)(unit primitive type)
 //! - Tuples with up to 16 [`SystemParam`] elements
-//! 
+//!
 //! # Composing systems
-//! 
+//!
 //! To run a collection of systems in some particular order, there are a few tools:
 //!
 //! - [`Schedule`](crate::schedule::Schedule): A linear sequence of stages.
@@ -63,7 +63,7 @@
 //! [`.label()`](crate::schedule::SystemDescriptor::label),
 //! [`.before()`](crate::schedule::SystemDescriptor::before),
 //! and [`.after()`](crate::schedule::SystemDescriptor::after) methods.
-//! 
+//!
 //! **Note:** In the absence of constraints, systems can run concurrently. However, their order will vary.
 
 mod commands;
