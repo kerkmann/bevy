@@ -392,7 +392,7 @@ impl<In, Out, Sys: System<In = In, Out = Out>> IntoSystem<In, Out, AlreadyWasSys
 ///     input * input
 /// }
 /// ```
-pub struct In<In>(pub In);
+pub struct In<T>(pub T);
 pub struct InputMarker;
 
 /// The [`System`]-type of functions and closures.

@@ -1,15 +1,8 @@
-//! Tools for controlling behavior in an ECS application.
-//!
-//! Systems define how an ECS based application behaves. They have to be registered to a
-//! [`SystemStage`](crate::schedule::SystemStage) to be able to run. A system is usually
-//! written as a normal function that will be automatically converted into a system.
-//!
-//! System functions can have parameters, through which one can query and mutate Bevy ECS state.
-//! Only types that implement [`SystemParam`] can be used, automatically fetching data from
-//! the [`World`](crate::world::World).
-//!
-//! System functions often look like this:
-//!
+//! Systems are functions that can access data stored in a [`World`](crate::world::World)
+//! and control application behavior.
+//! 
+//! # Examples
+//! 
 //! ```
 //! # use bevy_ecs::prelude::*;
 //! #
@@ -32,27 +25,18 @@
 //! }
 //! # bevy_ecs::system::assert_is_system(update_score_system);
 //! ```
-//!
-//! # System ordering
-//!
-//! While the execution of systems is usually parallel and not deterministic, there are two
-//! ways to determine a certain degree of execution order:
-//!
-//! - **System Stages:** They determine hard execution synchronization boundaries inside of
-//!   which systems run in parallel by default.
-//! - **Labeling:** First, systems are labeled upon creation by calling `.label()`. Then,
-//!   methods such as `.before()` and `.after()` are appended to systems to determine
-//!   execution order in respect to other systems.
-//!
-//! # System parameter list
-//! Following is the complete list of accepted types as system parameters:
+//! 
+//! # Constructing systems
+//! 
+//! Any function or closure whose arguments all implement the [`SystemParam`] trait can be automatically
+//! converted into a system:
 //!
 //! - [`Query<...>`](Query)
 //! - [`QuerySet<Q1, ...>`](QuerySet)
-//! - [`Res<T>`] and ([`Option<Res<T>>`](Res))
-//! - [`ResMut<T>`] and ([`Option<ResMut<T>>`](ResMut)) 
-//! - [`NonSend<T>`] and ([`Option<NonSend<T>>`](NonSend))
-//! - [`NonSendMut<T>`] and ([`Option<NonSendMut<T>>`](NonSendMut))
+//! - [`Res<T>`] and [`Option<Res<T>>`](Res)
+//! - [`ResMut<T>`] and [`Option<ResMut<T>>`](ResMut)
+//! - [`NonSend<T>`] and [`Option<NonSend<T>>`](NonSend)
+//! - [`NonSendMut<T>`] and [`Option<NonSendMut<T>>`](NonSendMut)
 //! - [`Commands`]
 //! - [`EventReader`](crate::event::EventReader)
 //! - [`EventWriter`](crate::event::EventWriter)
@@ -65,8 +49,22 @@
 //! - [`&Archetypes`](crate::archetype::Archetypes)
 //! - [`RemovedComponents<T>`]
 //! - [`SystemChangeTick`]
-//! - [`()` (unit primitive type)](https://doc.rust-lang.org/stable/std/primitive.unit.html)
+//! - [`In<T>`] (must be first argument in function)
+//! - [`()`](https://doc.rust-lang.org/stable/std/primitive.unit.html)(unit primitive type)
 //! - Tuples with up to 16 [`SystemParam`] elements
+//! 
+//! # Composing systems
+//! 
+//! There are a few tools to arrange a group of systems to run:
+//!
+//! - [`Schedule`](crate::schedule::Schedule): A linear sequence of stages.
+//! - [`Stage`](crate::schedule::SystemStage): Define hard sync boundaries. Queued [`Commands`] are applied on completion.
+//! - [`Label`](crate::schedule::SystemLabel): Define relative ordering within a stage using the
+//! [`.label()`](crate::schedule::SystemDescriptor::label),
+//! [`.before()`](crate::schedule::SystemDescriptor::before),
+//! and [`.after()`](crate::schedule::SystemDescriptor::after) methods.
+//! 
+//! **Note:** In the absence of constraints, systems can run concurrently. However, their order will vary.
 
 mod commands;
 mod function_system;
