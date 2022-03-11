@@ -312,7 +312,7 @@ impl SystemStage {
                     if let Some(&duplicate_index) = label.as_ref().and_then(|label| criteria_labels.get(label)) {
                         match strategy {
                             DuplicateLabelStrategy::Panic => panic!(
-                                "Run criteria {} is labelled with {:?}, which is already in use. \
+                                "Run criteria {} has label {:?}, which is already in use. \
                                 Consider using `RunCriteriaDescriptorCoercion::label_discard_if_duplicate().",
                                 container.name(),
                                 container.label
