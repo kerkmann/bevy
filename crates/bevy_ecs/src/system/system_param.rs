@@ -514,7 +514,7 @@ unsafe impl SystemParamState for CommandQueue {
 
         // conflict with &mut World (if it Commands appears first)
         system_meta.component_access_set.add(component_access);
-        // make sure schedule builder sees conflict with another system having &mut World
+        // make sure executor sees conflict with another system having &mut World
         system_meta
             .archetype_component_access
             .add_read(ArchetypeComponentId::WORLD_METADATA);
@@ -571,7 +571,7 @@ unsafe impl<'w, 's> SystemParamState for WorldState {
         }
 
         system_meta.component_access_set.add(component_access);
-        // make sure schedule builder sees conflict with another system having &mut World
+        // make sure executor sees conflict with another system having &mut World
         system_meta
             .archetype_component_access
             .add_read(ArchetypeComponentId::WORLD_METADATA);
@@ -630,7 +630,7 @@ unsafe impl<'w, 's> SystemParamState for WorldMutState {
         system_meta.set_exclusive();
 
         system_meta.component_access_set.add(component_access);
-        // make sure schedule builder sees conflict with another system reading World metadata
+        // make sure executor sees conflict with another system reading WorldMetadata
         system_meta
             .archetype_component_access
             .add_write(ArchetypeComponentId::WORLD_METADATA);
@@ -1214,7 +1214,7 @@ unsafe impl SystemParamState for ArchetypesState {
 
         // conflict with &mut World (if it Archetypes appears first)
         system_meta.component_access_set.add(component_access);
-        // make sure schedule builder sees conflict with another system having &mut World
+        // make sure executor sees conflict with another system having &mut World
         system_meta
             .archetype_component_access
             .add_read(ArchetypeComponentId::WORLD_METADATA);
@@ -1269,7 +1269,7 @@ unsafe impl SystemParamState for ComponentsState {
 
         // conflict with &mut World (if it Components appears first)
         system_meta.component_access_set.add(component_access);
-        // make sure schedule builder sees conflict with another system having &mut World
+        // make sure executor sees conflict with another system having &mut World
         system_meta
             .archetype_component_access
             .add_read(ArchetypeComponentId::WORLD_METADATA);
@@ -1324,7 +1324,7 @@ unsafe impl SystemParamState for EntitiesState {
 
         // conflict with &mut World (if it Entities appears first)
         system_meta.component_access_set.add(component_access);
-        // make sure schedule builder sees conflict with another system having &mut World
+        // make sure executor sees conflict with another system having &mut World
         system_meta
             .archetype_component_access
             .add_read(ArchetypeComponentId::WORLD_METADATA);
@@ -1379,7 +1379,7 @@ unsafe impl SystemParamState for BundlesState {
 
         // conflict with &mut World (if it Bundles appears first)
         system_meta.component_access_set.add(component_access);
-        // make sure schedule builder sees conflict with another system having &mut World
+        // make sure executor sees conflict with another system having &mut World
         system_meta
             .archetype_component_access
             .add_read(ArchetypeComponentId::WORLD_METADATA);
