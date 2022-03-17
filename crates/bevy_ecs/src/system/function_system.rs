@@ -61,11 +61,6 @@ impl SystemMeta {
     pub(crate) fn set_exclusive(&mut self) {
         self.is_exclusive = true;
     }
-
-    #[inline]
-    pub(crate) fn check_change_tick(&mut self, change_tick: u32) {
-        check_system_change_tick(&mut self.last_change_tick, change_tick, self.name.as_ref());
-    }
 }
 
 // TODO: Actually use this in FunctionSystem. We should probably only do this once Systems are constructed using a World reference
