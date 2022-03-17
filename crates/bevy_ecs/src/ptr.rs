@@ -17,7 +17,7 @@ impl<'a, T> SemiSafeCell<'a, T> {
     /// # Safety
     ///
     /// Caller must ensure there are no active mutable references to the underlying data.
-    pub unsafe fn as_ref(self) -> &'a T {
+    pub unsafe fn as_ref(&self) -> &'a T {
         &*self.0.get()
     }
 
@@ -26,7 +26,7 @@ impl<'a, T> SemiSafeCell<'a, T> {
     /// # Safety
     ///
     /// Caller must ensure access to the underlying data is unique (no active references, mutable or not).
-    pub unsafe fn as_mut(self) -> &'a mut T {
+    pub unsafe fn as_mut(&self) -> &'a mut T {
         &mut *self.0.get()
     }
 }
