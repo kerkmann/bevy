@@ -693,7 +693,7 @@ mod tests {
             Query<&B>,
             QuerySet<(QueryState<&C>, QueryState<&D>)>,
         )> = SystemState::new(&mut world);
-        let (a, query, _) = system_state.get(&mut world);
+        let (a, query, _) = system_state.get(&world);
         assert_eq!(*a, A(42), "returned resource matches initial value");
         assert_eq!(
             *query.single(),
@@ -720,7 +720,7 @@ mod tests {
         // The following line shouldn't compile because the parameters used are not ReadOnlySystemParam
         // let (a, query) = system_state.get(&mut world);
 
-        let (a, mut query) = system_state.get(&mut world);
+        let (a, mut query) = system_state.get_mut(&mut world);
         assert_eq!(*a, A(42), "returned resource matches initial value");
         assert_eq!(
             *query.single_mut(),
@@ -739,18 +739,18 @@ mod tests {
 
         let mut system_state: SystemState<Query<&A, Changed<A>>> = SystemState::new(&mut world);
         {
-            let query = system_state.get(&mut world);
+            let query = system_state.get(&world);
             assert_eq!(*query.single(), A(1));
         }
 
         {
-            let query = system_state.get(&mut world);
+            let query = system_state.get(&world);
             assert!(query.get_single().is_err());
         }
 
         world.entity_mut(entity).get_mut::<A>().unwrap().0 = 2;
         {
-            let query = system_state.get(&mut world);
+            let query = system_state.get(&world);
             assert_eq!(*query.single(), A(2));
         }
     }
@@ -760,8 +760,8 @@ mod tests {
     fn system_state_invalid_world() {
         let mut world = World::default();
         let mut system_state = SystemState::<Query<&A>>::new(&mut world);
-        let mut mismatched_world = World::default();
-        system_state.get(&mut mismatched_world);
+        let mismatched_world = World::default();
+        system_state.get(&mismatched_world);
     }
 
     #[test]
@@ -777,7 +777,7 @@ mod tests {
 
         let mut system_state = SystemState::<Query<&A>>::new(&mut world);
         {
-            let query = system_state.get(&mut world);
+            let query = system_state.get(&world);
             assert_eq!(
                 query.iter().collect::<Vec<_>>(),
                 vec![&A(1)],
@@ -787,7 +787,7 @@ mod tests {
 
         world.spawn().insert_bundle((A(2), B(2)));
         {
-            let query = system_state.get(&mut world);
+            let query = system_state.get(&world);
             assert_eq!(
                 query.iter().collect::<Vec<_>>(),
                 vec![&A(1), &A(2)],
@@ -810,18 +810,18 @@ mod tests {
         }
 
         impl State {
-            fn hold_res<'w>(&mut self, world: &'w mut World) -> Holder<'w> {
+            fn hold_res<'w>(&mut self, world: &'w World) -> Holder<'w> {
                 let a = self.state.get(world);
                 Holder {
                     value: a.into_inner(),
                 }
             }
-            fn hold_component<'w>(&mut self, world: &'w mut World, entity: Entity) -> Holder<'w> {
+            fn hold_component<'w>(&mut self, world: &'w World, entity: Entity) -> Holder<'w> {
                 let q = self.state_q.get(world);
                 let a = q.get(entity).unwrap();
                 Holder { value: a }
             }
-            fn hold_components<'w>(&mut self, world: &'w mut World) -> Vec<Holder<'w>> {
+            fn hold_components<'w>(&mut self, world: &'w World) -> Vec<Holder<'w>> {
                 let mut components = Vec::new();
                 let q = self.state_q.get(world);
                 for a in q.iter() {
@@ -843,7 +843,7 @@ mod tests {
 
         let mut system_state = SystemState::<Query<&mut A>>::new(&mut world);
         {
-            let mut query = system_state.get(&mut world);
+            let mut query = system_state.get_mut(&mut world);
             assert_eq!(
                 query.iter_mut().map(|m| *m).collect::<Vec<A>>(),
                 vec![A(1), A(2)],

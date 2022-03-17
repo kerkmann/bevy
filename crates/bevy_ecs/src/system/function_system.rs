@@ -3,7 +3,10 @@ use crate::{
     component::ComponentId,
     ptr::SemiSafeCell,
     query::{Access, FilteredAccessSet},
-    system::{check_system_change_tick, System, SystemParam, SystemParamFetch, SystemParamState},
+    system::{
+        check_system_change_tick, ReadOnlySystemParamFetch, System, SystemParam, SystemParamFetch,
+        SystemParamState,
+    },
     world::{World, WorldId},
 };
 use bevy_ecs_macros::all_tuples;
@@ -107,8 +110,9 @@ impl SystemMeta {
 ///     Query<&MyComponent>,
 ///     )> = SystemState::new(&mut world);
 ///
-/// // Use system_state.get(&mut world) and unpack your system parameters into variables!
-/// let (event_writer, maybe_resource, query) = system_state.get(&mut world);
+/// // Use system_state.get_mut(&mut world) and unpack your system parameters into variables!
+/// // system_state.get(&world) is available if your params are read-only.
+/// let (event_writer, maybe_resource, query) = system_state.get_mut(&mut world);
 /// ```
 /// Caching:
 /// ```rust
@@ -162,11 +166,27 @@ impl<Param: SystemParam> SystemState<Param> {
         &self.meta
     }
 
-    /// Retrieves the [`SystemParam`] values from the given [`World`].
+    /// Retrieves the [`SystemParam`] values (must all be read-only) from the given [`World`].
     ///
     /// This method also ensures the cached access is up-to-date before retrieving the data.
     #[inline]
     pub fn get<'w, 's>(
+        &'s mut self,
+        world: &'w World,
+    ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item
+    where
+        Param::Fetch: ReadOnlySystemParamFetch,
+    {
+        self.validate_world_and_update_archetypes(world);
+        // SAFETY: The params cannot request mutable access and world is the same one used to construct this state.
+        unsafe { self.get_unchecked(&SemiSafeCell::from_ref(world)) }
+    }
+
+    /// Retrieves the [`SystemParam`] values from the given [`World`].
+    ///
+    /// This method also ensures the cached access is up-to-date before retrieving the data.
+    #[inline]
+    pub fn get_mut<'w, 's>(
         &'s mut self,
         world: &'w mut World,
     ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
