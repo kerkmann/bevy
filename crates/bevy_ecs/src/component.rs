@@ -403,7 +403,7 @@ fn check_tick(last_change_tick: &mut u32, change_tick: u32) {
     }
 }
 
-/// A non-existent component "accessed" by systems with params that borrow metadata on [`World`]:
+/// A non-existent component "accessed" by systems with params that borrow metadata on [`World`](crate::world::World):
 /// - [`Commands`](crate::system::Commands)
 /// - [`&World`](crate::world::World)
 /// - [`&mut World`](crate::world::World)

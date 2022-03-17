@@ -34,7 +34,7 @@ use bevy_utils::HashMap;
 ///
 /// **Note:** `Schedule` itself implements the [`Stage`] trait, so schedules can be nested.
 /// This can help with implementing more complex control flows, like applying queued
-/// [`Commands`] multiple times in a loop within the same frame.
+/// [`Commands`](crate::system::Commands) multiple times in a loop within the same frame.
 #[derive(Default)]
 pub struct Schedule {
     stages: HashMap<BoxedStageLabel, Box<dyn Stage>>,

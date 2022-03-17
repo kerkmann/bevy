@@ -58,5 +58,5 @@ impl<T> Clone for SemiSafeCell<'_, T> {
 }
 
 // SAFETY: Multi-threaded executor does not run systems with conflicting access at the same time.
-unsafe impl Send for SemiSafeCell<'_, World> {}
-unsafe impl Sync for SemiSafeCell<'_, World> {}
+unsafe impl<T> Send for SemiSafeCell<'_, T> {}
+unsafe impl<T> Sync for SemiSafeCell<'_, T> {}
