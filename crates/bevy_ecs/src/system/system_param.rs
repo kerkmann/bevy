@@ -1603,7 +1603,7 @@ where
     unsafe fn get_param(
         state: &'state mut Self,
         system_meta: &SystemMeta,
-        world: &'world World,
+        world: &SemiSafeCell<'world, World>,
         change_tick: u32,
     ) -> Self::Item {
         // Safe: We properly delegate SystemParamState
