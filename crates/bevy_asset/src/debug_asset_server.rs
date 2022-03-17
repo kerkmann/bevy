@@ -90,7 +90,7 @@ pub(crate) fn sync_debug_assets<T: Asset + Clone>(
         Res<HandleMap<T>>,
         Res<Assets<T>>,
     )>::new(world);
-    let (changed_shaders, handle_map, debug_assets) = state.get_mut(world);
+    let (changed_shaders, handle_map, debug_assets) = state.get(world);
     for changed in changed_shaders.iter_current_update_events() {
         let debug_handle = match changed {
             AssetEvent::Created { handle } => handle,
@@ -119,7 +119,7 @@ pub fn register_handle_with_loader<A: Asset>(
     let mut state = SystemState::<(ResMut<HandleMap<A>>, Res<AssetServer>)>::new(&mut app.world);
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let manifest_dir_path = Path::new(&manifest_dir);
-    let (mut handle_map, asset_server) = state.get_mut(&mut app.world);
+    let (mut handle_map, asset_server) = state.get(&mut app.world);
     let asset_io = asset_server
         .asset_io()
         .downcast_ref::<FileAssetIo>()
