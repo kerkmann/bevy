@@ -44,7 +44,7 @@ pub struct SystemLabelMarker;
 /// SystemStage::parallel()
 ///     .with_system(do_something.label(Something))
 ///     .with_system(do_the_other_thing.after(Something))
-///     .with_system(do_something_else.exclusive_system().at_end());
+///     .with_system(do_something_else.at_end());
 /// ```
 pub struct SystemDescriptor {
     pub(crate) system: BoxedSystem<(), ()>,

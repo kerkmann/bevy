@@ -3,10 +3,7 @@ use crate::{
     component::ComponentId,
     ptr::SemiSafeCell,
     query::{Access, FilteredAccessSet},
-    system::{
-        check_system_change_tick, System, SystemParam, SystemParamFetch, SystemParamItem,
-        SystemParamState,
-    },
+    system::{check_system_change_tick, System, SystemParam, SystemParamFetch, SystemParamState},
     world::{World, WorldId},
 };
 use bevy_ecs_macros::all_tuples;
