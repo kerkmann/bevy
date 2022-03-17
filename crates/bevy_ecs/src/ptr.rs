@@ -1,7 +1,5 @@
 use std::cell::UnsafeCell;
 
-use crate::world::World;
-
 /// Uses interior mutability to yeet unpopular API leftovers.
 pub enum SemiSafeCell<'a, T> {
     Ref(&'a T),
