@@ -136,16 +136,16 @@ pub trait IntoSystemDescriptor<Params> {
     /// with other systems in this set.
     fn in_ambiguity_set(self, set: impl AmbiguitySetLabel) -> SystemDescriptor;
 
-    // /// This method was formerly required to add systems with `&mut World` arguments to an `App`.
-    // ///
-    // /// However, as of [#4166](https://github.com/bevyengine/bevy/pull/4166),
-    // /// this is no longer required.
-    // ///
-    // /// In the future, this method will be removed.
-    // #[deprecated(
-    //     since = "0.7.0",
-    //     note = "`.exclusive_system()` is no longer needed, bevy can convert these functions automatically"
-    // )]
+    /// This method was formerly required to add systems with `&mut World` arguments to an `App`.
+    ///
+    /// However, as of [#4166](https://github.com/bevyengine/bevy/pull/4166),
+    /// this is no longer required.
+    ///
+    /// In the future, this method will be removed.
+    #[deprecated(
+        since = "0.7.0",
+        note = "`.exclusive_system()` is no longer needed, bevy can convert these functions automatically"
+    )]
     fn exclusive_system(self) -> SystemDescriptor;
 
     /// Specifies that the system should run with other exclusive systems at the start of stage.
