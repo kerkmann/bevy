@@ -20,7 +20,7 @@ pub mod prelude {
 
 use bevy_app::prelude::*;
 use bevy_asset::AddAsset;
-use bevy_ecs::{schedule::ExclusiveSystemDescriptorCoercion, system::IntoExclusiveSystem};
+use bevy_ecs::schedule::IntoSystemDescriptor;
 
 #[derive(Default)]
 pub struct ScenePlugin;
@@ -31,9 +31,6 @@ impl Plugin for ScenePlugin {
             .add_asset::<Scene>()
             .init_asset_loader::<SceneLoader>()
             .init_resource::<SceneSpawner>()
-            .add_system_to_stage(
-                CoreStage::PreUpdate,
-                scene_spawner_system.exclusive_system().at_end(),
-            );
+            .add_system_to_stage(CoreStage::PreUpdate, scene_spawner_system.at_end());
     }
 }
