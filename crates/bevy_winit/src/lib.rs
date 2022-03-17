@@ -13,7 +13,6 @@ pub use winit_windows::*;
 use bevy_app::{App, AppExit, CoreStage, Plugin};
 use bevy_ecs::{
     event::{Events, ManualEventReader},
-    system::IntoExclusiveSystem,
     world::World,
 };
 use bevy_math::{ivec2, DVec2, Vec2};
@@ -42,7 +41,7 @@ impl Plugin for WinitPlugin {
         app.init_non_send_resource::<WinitWindows>()
             .init_resource::<WinitSettings>()
             .set_runner(winit_runner)
-            .add_system_to_stage(CoreStage::PostUpdate, change_window.exclusive_system());
+            .add_system_to_stage(CoreStage::PostUpdate, change_window);
         let event_loop = EventLoop::new();
         handle_initial_window_events(&mut app.world, &event_loop);
         app.insert_non_send_resource(event_loop);

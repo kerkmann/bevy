@@ -1,14 +1,7 @@
-//! Tools for controlling behavior in an ECS application.
+//! Systems are functions that can access data stored in a [`World`](crate::world::World)
+//! and control application behavior.
 //!
-//! Systems define how an ECS based application behaves. They have to be registered to a
-//! [`SystemStage`](crate::schedule::SystemStage) to be able to run. A system is usually
-//! written as a normal function that will be automatically converted into a system.
-//!
-//! System functions can have parameters, through which one can query and mutate Bevy ECS state.
-//! Only types that implement [`SystemParam`] can be used, automatically fetching data from
-//! the [`World`](crate::world::World).
-//!
-//! System functions often look like this:
+//! # Examples
 //!
 //! ```
 //! # use bevy_ecs::prelude::*;
@@ -33,41 +26,47 @@
 //! # bevy_ecs::system::assert_is_system(update_score_system);
 //! ```
 //!
-//! # System ordering
+//! # Constructing systems
 //!
-//! While the execution of systems is usually parallel and not deterministic, there are two
-//! ways to determine a certain degree of execution order:
+//! Any function or closure whose arguments all implement the [`SystemParam`] trait can be automatically
+//! converted into a system:
 //!
-//! - **System Stages:** They determine hard execution synchronization boundaries inside of
-//!   which systems run in parallel by default.
-//! - **Labeling:** First, systems are labeled upon creation by calling `.label()`. Then,
-//!   methods such as `.before()` and `.after()` are appended to systems to determine
-//!   execution order in respect to other systems.
-//!
-//! # System parameter list
-//! Following is the complete list of accepted types as system parameters:
-//!
-//! - [`Query`]
-//! - [`Res`] and `Option<Res>`
-//! - [`ResMut`] and `Option<ResMut>`
+//! - [`Query<...>`](Query)
+//! - [`QuerySet<Q1, ...>`](QuerySet)
+//! - [`Res<T>`] and [`Option<Res<T>>`](Res)
+//! - [`ResMut<T>`] and [`Option<ResMut<T>>`](ResMut)
+//! - [`NonSend<T>`] and [`Option<NonSend<T>>`](NonSend)
+//! - [`NonSendMut<T>`] and [`Option<NonSendMut<T>>`](NonSendMut)
 //! - [`Commands`]
-//! - [`Local`]
 //! - [`EventReader`](crate::event::EventReader)
 //! - [`EventWriter`](crate::event::EventWriter)
-//! - [`NonSend`] and `Option<NonSend>`
-//! - [`NonSendMut`] and `Option<NonSendMut>`
+//! - [`Local<T>`]
 //! - [`&World`](crate::world::World)
-//! - [`RemovedComponents`]
+//! - [`&mut World`](crate::world::World)
+//! - [`&Entities`](crate::entity::Entities)
+//! - [`&Components`](crate::component::Components)
+//! - [`&Bundles`](crate::bundle::Bundles)
+//! - [`&Archetypes`](crate::archetype::Archetypes)
+//! - [`RemovedComponents<T>`]
 //! - [`SystemChangeTick`]
-//! - [`Archetypes`](crate::archetype::Archetypes) (Provides Archetype metadata)
-//! - [`Bundles`](crate::bundle::Bundles) (Provides Bundles metadata)
-//! - [`Components`](crate::component::Components) (Provides Components metadata)
-//! - [`Entities`](crate::entity::Entities) (Provides Entities metadata)
-//! - All tuples between 1 to 16 elements where each element implements [`SystemParam`]
-//! - [`()` (unit primitive type)](https://doc.rust-lang.org/stable/std/primitive.unit.html)
+//! - [`In<T>`] (must be first argument in function)
+//! - [`()`](https://doc.rust-lang.org/stable/std/primitive.unit.html)(unit primitive type)
+//! - Tuples with up to 16 [`SystemParam`] elements
+//!
+//! # Composing systems
+//!
+//! To run a collection of systems in some particular order, there are a few tools:
+//!
+//! - [`Schedule`](crate::schedule::Schedule): A linear sequence of stages.
+//! - [`Stage`](crate::schedule::SystemStage): Define hard sync boundaries. Queued [`Commands`] are applied on completion.
+//! - [`Label`](crate::schedule::SystemLabel): Define relative ordering within a stage using the
+//! [`.label()`](crate::schedule::SystemDescriptor::label),
+//! [`.before()`](crate::schedule::SystemDescriptor::before),
+//! and [`.after()`](crate::schedule::SystemDescriptor::after) methods.
+//!
+//! **Note:** In the absence of constraints, systems can run concurrently. However, their order will vary.
 
 mod commands;
-mod exclusive_system;
 mod function_system;
 mod query;
 #[allow(clippy::module_inception)]
@@ -76,7 +75,6 @@ mod system_chaining;
 mod system_param;
 
 pub use commands::*;
-pub use exclusive_system::*;
 pub use function_system::*;
 pub use query::*;
 pub use system::*;
@@ -103,8 +101,8 @@ mod tests {
         query::{Added, Changed, Or, QueryState, With, Without},
         schedule::{Schedule, Stage, SystemStage},
         system::{
-            IntoExclusiveSystem, IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet,
-            RemovedComponents, Res, ResMut, System, SystemState,
+            IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet, RemovedComponents, Res,
+            ResMut, System, SystemState,
         },
         world::{FromWorld, World},
     };
@@ -142,6 +140,25 @@ mod tests {
             system.new_archetype(archetype);
         }
         system.run((), &mut world);
+    }
+
+    #[test]
+    fn mut_world_system() {
+        let mut system = IntoSystem::into_system(|world: &mut World| {
+            world.spawn().insert(A);
+
+            let mut count = 0;
+            for _ in world.query::<&A>().iter(world) {
+                count += 1;
+            }
+
+            count
+        });
+
+        let mut world = World::new();
+        system.initialize(&mut world);
+        let count = system.run((), &mut world);
+        assert_eq!(count, 1);
     }
 
     fn run_system<Param, S: IntoSystem<(), (), Param>>(world: &mut World, system: S) {
@@ -265,10 +282,7 @@ mod tests {
         let mut update = SystemStage::parallel();
         update.add_system(incr_e_on_flip);
         schedule.add_stage("update", update);
-        schedule.add_stage(
-            "clear_trackers",
-            SystemStage::single(World::clear_trackers.exclusive_system()),
-        );
+        schedule.add_stage("clear_trackers", SystemStage::single(World::clear_trackers));
 
         schedule.run(&mut world);
         assert_eq!(world.resource::<Added>().0, 1);
@@ -704,7 +718,7 @@ mod tests {
             SystemState::new(&mut world);
 
         // The following line shouldn't compile because the parameters used are not ReadOnlySystemParam
-        // let (a, query) = system_state.get(&world);
+        // let (a, query) = system_state.get(&mut world);
 
         let (a, mut query) = system_state.get_mut(&mut world);
         assert_eq!(*a, A(42), "returned resource matches initial value");

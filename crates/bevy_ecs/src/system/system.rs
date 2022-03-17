@@ -3,62 +3,57 @@ use bevy_utils::tracing::warn;
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
+    ptr::SemiSafeCell,
     query::Access,
     world::World,
 };
 use std::borrow::Cow;
 
-/// An ECS system that can be added to a [`Schedule`](crate::schedule::Schedule)
-///
-/// Systems are functions with all arguments implementing
+/// An ECS system, typically converted from functions and closures whose arguments all implement
 /// [`SystemParam`](crate::system::SystemParam).
 ///
-/// Systems are added to an application using `App::add_system(my_system)`
-/// or similar methods, and will generally run once per pass of the main loop.
-///
-/// Systems are executed in parallel, in opportunistic order; data access is managed automatically.
-/// It's possible to specify explicit execution order between specific systems,
-/// see [`SystemDescriptor`](crate::schedule::SystemDescriptor).
+/// **Note**: Only systems with `In = ()` and `Out = ()` can be added to a [`Schedule`](crate::schedule::Schedule).
+/// When constructing a `Schedule`, use a [`SystemDescriptor`](crate::schedule::SystemDescriptor) to
+/// specify when a system runs relative to others.
 pub trait System: Send + Sync + 'static {
-    /// The system's input. See [`In`](crate::system::In) for
-    /// [`FunctionSystem`](crate::system::FunctionSystem)s.
+    /// The input to the system.
     type In;
-    /// The system's output.
+    /// The output of the system.
     type Out;
     /// Returns the system's name.
     fn name(&self) -> Cow<'static, str>;
-    /// Register a new archetype for this system.
+    /// Updates the archetype component [`Access`] of the system to account for `archetype`.
     fn new_archetype(&mut self, archetype: &Archetype);
     /// Returns the system's component [`Access`].
     fn component_access(&self) -> &Access<ComponentId>;
-    /// Returns the system's archetype component [`Access`].
+    /// Returns the system's current archetype component [`Access`].
     fn archetype_component_access(&self) -> &Access<ArchetypeComponentId>;
     /// Returns true if the system is [`Send`].
     fn is_send(&self) -> bool;
-    /// Runs the system with the given input in the world. Unlike [`System::run`], this function
-    /// takes a shared reference to [`World`] and may therefore break Rust's aliasing rules, making
-    /// it unsafe to call.
+    /// Runs the system with the given `input` on `world`.
+    fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
+        // SAFETY: The world is exclusively borrowed.
+        unsafe { self.run_unchecked(input, &SemiSafeCell::from_mut(world)) }
+    }
+    /// Runs the system with the given `input` on `world`.
+    ///
+    /// This method does _not_ update the system's cached access before retrieving the data.
     ///
     /// # Safety
     ///
-    /// This might access world and resources in an unsafe manner. This should only be called in one
-    /// of the following contexts:
-    ///     1. This system is the only system running on the given world across all threads.
-    ///     2. This system only runs in parallel with other systems that do not conflict with the
-    ///        [`System::archetype_component_access()`].
-    unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out;
-    /// Runs the system with the given input in the world.
-    fn run(&mut self, input: Self::In, world: &mut World) -> Self::Out {
-        // SAFE: world and resources are exclusively borrowed
-        unsafe { self.run_unsafe(input, world) }
-    }
+    /// Caller must ensure:
+    /// - The given world is the same world used to construct the system.
+    /// - There are no active references that conflict with the system's access. Mutable access must be unique.
+    unsafe fn run_unchecked(&mut self, input: Self::In, world: &SemiSafeCell<World>) -> Self::Out;
+    /// Applies deferred operations such as commands on the world.  
     fn apply_buffers(&mut self, world: &mut World);
     /// Initialize the system.
     fn initialize(&mut self, _world: &mut World);
     fn check_change_tick(&mut self, change_tick: u32);
+    fn is_exclusive(&self) -> bool;
 }
 
-/// A convenience type alias for a boxed [`System`] trait object.
+/// A convenient alias for a boxed [`System`] trait object.
 pub type BoxedSystem<In = (), Out = ()> = Box<dyn System<In = In, Out = Out>>;
 
 pub(crate) fn check_system_change_tick(

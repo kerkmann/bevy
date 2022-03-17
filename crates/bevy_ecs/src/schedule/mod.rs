@@ -30,12 +30,11 @@ use std::fmt::Debug;
 use crate::{system::System, world::World};
 use bevy_utils::HashMap;
 
-/// A container of [`Stage`]s set to be run in a linear order.
+/// A linear [`Stage`] sequence.
 ///
-/// Since `Schedule` implements the [`Stage`] trait, it can be inserted into another schedule.
-/// In this way, the properties of the child schedule can be set differently from the parent.
-/// For example, it can be set to run only once during app execution, while the parent schedule
-/// runs indefinitely.
+/// **Note:** `Schedule` itself implements the [`Stage`] trait, so schedules can be nested.
+/// This can help with implementing more complex control flows, like applying queued
+/// [`Commands`](crate::system::Commands) multiple times in a loop within the same frame.
 #[derive(Default)]
 pub struct Schedule {
     stages: HashMap<BoxedStageLabel, Box<dyn Stage>>,

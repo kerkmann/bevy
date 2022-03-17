@@ -402,3 +402,17 @@ fn check_tick(last_change_tick: &mut u32, change_tick: u32) {
         *last_change_tick = change_tick.wrapping_sub(MAX_DELTA);
     }
 }
+
+/// A non-existent component "accessed" by systems with params that borrow metadata on [`World`](crate::world::World):
+/// - [`Commands`](crate::system::Commands)
+/// - [`&World`](crate::world::World)
+/// - [`&mut World`](crate::world::World)
+/// - [`&Archetypes`](crate::archetype::Archetypes)
+/// - [`&Bundles`](crate::bundle::Bundles)
+/// - [`&Components`](crate::component::Components)
+/// - [`&Entities`](crate::entity::Entities)
+pub(crate) struct WorldMetadata;
+
+impl Component for WorldMetadata {
+    type Storage = TableStorage;
+}

@@ -1,7 +1,8 @@
 use crate::{
     archetype::{ArchetypeComponentId, ArchetypeGeneration},
+    ptr::SemiSafeCell,
     query::Access,
-    schedule::{ParallelSystemContainer, ParallelSystemExecutor},
+    schedule::{FunctionSystemContainer, ParallelSystemExecutor},
     world::World,
 };
 use async_channel::{Receiver, Sender};
@@ -77,7 +78,7 @@ impl Default for ParallelExecutor {
 }
 
 impl ParallelSystemExecutor for ParallelExecutor {
-    fn rebuild_cached_data(&mut self, systems: &[ParallelSystemContainer]) {
+    fn rebuild_cached_data(&mut self, systems: &[FunctionSystemContainer]) {
         self.system_metadata.clear();
         self.queued.grow(systems.len());
         self.running.grow(systems.len());
@@ -85,8 +86,12 @@ impl ParallelSystemExecutor for ParallelExecutor {
 
         // Construct scheduling data for systems.
         for container in systems.iter() {
-            let dependencies_total = container.dependencies().len();
             let system = container.system();
+            if system.is_exclusive() {
+                panic!("this executor does not support systems with the `&mut World` param");
+            }
+
+            let dependencies_total = container.dependencies().len();
             let (start_sender, start_receiver) = async_channel::bounded(1);
             self.system_metadata.push(SystemSchedulingMetadata {
                 start_sender,
@@ -106,7 +111,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
         }
     }
 
-    fn run_systems(&mut self, systems: &mut [ParallelSystemContainer], world: &mut World) {
+    fn run_systems(&mut self, systems: &mut [FunctionSystemContainer], world: &mut World) {
         #[cfg(test)]
         if self.events_sender.is_none() {
             let (sender, receiver) = async_channel::unbounded::<SchedulingEvent>();
@@ -119,8 +124,10 @@ impl ParallelSystemExecutor for ParallelExecutor {
         let compute_pool = world
             .get_resource_or_insert_with(|| ComputeTaskPool(TaskPool::default()))
             .clone();
+
+        let world = SemiSafeCell::from_mut(world);
         compute_pool.scope(|scope| {
-            self.prepare_systems(scope, systems, world);
+            self.prepare_systems(scope, systems, &world);
             let parallel_executor = async {
                 // All systems have been ran if there are no queued or running systems.
                 while 0 != self.queued.count_ones(..) + self.running.count_ones(..) {
@@ -156,7 +163,7 @@ impl ParallelSystemExecutor for ParallelExecutor {
 impl ParallelExecutor {
     /// Calls `system.new_archetype()` for each archetype added since the last call to
     /// `update_archetypes` and updates cached `archetype_component_access`.
-    fn update_archetypes(&mut self, systems: &mut [ParallelSystemContainer], world: &World) {
+    fn update_archetypes(&mut self, systems: &mut [FunctionSystemContainer], world: &World) {
         #[cfg(feature = "trace")]
         let span = bevy_utils::tracing::info_span!("update_archetypes");
         #[cfg(feature = "trace")]
@@ -179,11 +186,11 @@ impl ParallelExecutor {
 
     /// Populates `should_run` bitset, spawns tasks for systems that should run this iteration,
     /// queues systems with no dependencies to run (or skip) at next opportunity.
-    fn prepare_systems<'scope>(
+    fn prepare_systems<'world: 'scope, 'scope>(
         &mut self,
         scope: &mut Scope<'scope, ()>,
-        systems: &'scope mut [ParallelSystemContainer],
-        world: &'scope World,
+        systems: &'scope mut [FunctionSystemContainer],
+        world: &'scope SemiSafeCell<'world, World>,
     ) {
         #[cfg(feature = "trace")]
         let span = bevy_utils::tracing::info_span!("prepare_systems");
@@ -211,7 +218,7 @@ impl ParallelExecutor {
                         .unwrap_or_else(|error| unreachable!("{}", error));
                     #[cfg(feature = "trace")]
                     let system_guard = system_span.enter();
-                    unsafe { system.run_unsafe((), world) };
+                    unsafe { system.run_unchecked((), world) };
                     #[cfg(feature = "trace")]
                     drop(system_guard);
                     finish_sender
@@ -461,11 +468,15 @@ mod tests {
             receive_events(&world),
             vec![StartedSystems(1), StartedSystems(1),]
         );
+        // made &World non-Send to be able to read non-Send resources
         let mut stage = SystemStage::parallel()
             .with_system(wants_world)
             .with_system(wants_world);
         stage.run(&mut world);
-        assert_eq!(receive_events(&world), vec![StartedSystems(2),]);
+        assert_eq!(
+            receive_events(&world),
+            vec![StartedSystems(1), StartedSystems(1),]
+        );
     }
 
     #[test]

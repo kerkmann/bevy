@@ -198,10 +198,10 @@ fn new_player_system(
     }
 }
 
-// If you really need full, immediate read/write access to the world or resources, you can use an
-// "exclusive system".
-// WARNING: These will block all parallel execution of other systems until they finish, so they
-// should generally be avoided if you care about performance.
+// If you really need full, immediate write access to the world or resources, you can borrow
+// the entire world.
+// WARNING: These systems will block all parallel execution of other systems until they finish,
+// so they should generally be avoided if you care about performance.
 #[allow(dead_code)]
 fn exclusive_player_system(world: &mut World) {
     // this does the same thing as "new_player_system"
@@ -329,14 +329,7 @@ fn main() {
         )
         .add_system_to_stage(MyStage::BeforeRound, new_round_system)
         .add_system_to_stage(MyStage::BeforeRound, new_player_system)
-        .add_system_to_stage(
-            MyStage::BeforeRound,
-            exclusive_player_system.exclusive_system(),
-        )
-        // Systems which take `&mut World` as an argument must call `.exclusive_system()`.
-        // The following will not compile.
-        //.add_system_to_stage(MyStage::BeforeRound, exclusive_player_system)
-        //
+        .add_system_to_stage(MyStage::BeforeRound, exclusive_player_system.at_start())
         // We can ensure that game_over system runs after score_check_system using explicit ordering
         // constraints First, we label the system we want to refer to using `.label`
         // Then, we use either `.before` or `.after` to describe the order we want the relationship

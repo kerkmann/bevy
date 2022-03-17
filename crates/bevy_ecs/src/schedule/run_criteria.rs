@@ -1,6 +1,7 @@
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration},
     component::ComponentId,
+    ptr::SemiSafeCell,
     query::Access,
     schedule::{BoxedRunCriteriaLabel, GraphNode, RunCriteriaLabel},
     system::{BoxedSystem, IntoSystem, System},
@@ -428,7 +429,7 @@ impl System for RunOnce {
         true
     }
 
-    unsafe fn run_unsafe(&mut self, _input: (), _world: &World) -> ShouldRun {
+    unsafe fn run_unchecked(&mut self, _input: (), _world: &SemiSafeCell<World>) -> ShouldRun {
         if self.ran {
             ShouldRun::No
         } else {
@@ -442,4 +443,8 @@ impl System for RunOnce {
     fn initialize(&mut self, _world: &mut World) {}
 
     fn check_change_tick(&mut self, _change_tick: u32) {}
+
+    fn is_exclusive(&self) -> bool {
+        false
+    }
 }

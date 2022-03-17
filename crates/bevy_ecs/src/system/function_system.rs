@@ -1,6 +1,7 @@
 use crate::{
     archetype::{Archetype, ArchetypeComponentId, ArchetypeGeneration, ArchetypeId},
     component::ComponentId,
+    ptr::SemiSafeCell,
     query::{Access, FilteredAccessSet},
     system::{
         check_system_change_tick, ReadOnlySystemParamFetch, System, SystemParam, SystemParamFetch,
@@ -16,10 +17,13 @@ pub struct SystemMeta {
     pub(crate) name: Cow<'static, str>,
     pub(crate) component_access_set: FilteredAccessSet<ComponentId>,
     pub(crate) archetype_component_access: Access<ArchetypeComponentId>,
-    // NOTE: this must be kept private. making a SystemMeta non-send is irreversible to prevent
-    // SystemParams from overriding each other
-    is_send: bool,
     pub(crate) last_change_tick: u32,
+    // NOTE: This field must be kept private. Making a `SystemMeta` non-`Send` is irreversible to
+    // prevent multiple system params from toggling it.
+    is_send: bool,
+    // NOTE: This field was a tempoary measure to remove `.exclusive_system()` without disturbing
+    // the rest of the existing API. See #4166.
+    is_exclusive: bool,
 }
 
 impl SystemMeta {
@@ -28,8 +32,9 @@ impl SystemMeta {
             name: std::any::type_name::<T>().into(),
             archetype_component_access: Access::default(),
             component_access_set: FilteredAccessSet::default(),
-            is_send: true,
             last_change_tick: 0,
+            is_send: true,
+            is_exclusive: false,
         }
     }
 
@@ -45,6 +50,16 @@ impl SystemMeta {
     #[inline]
     pub fn set_non_send(&mut self) {
         self.is_send = false;
+    }
+
+    #[inline]
+    pub(crate) fn is_exclusive(&self) -> bool {
+        self.is_exclusive
+    }
+
+    #[inline]
+    pub(crate) fn set_exclusive(&mut self) {
+        self.is_exclusive = true;
     }
 }
 
@@ -96,7 +111,7 @@ impl SystemMeta {
 ///     )> = SystemState::new(&mut world);
 ///
 /// // Use system_state.get_mut(&mut world) and unpack your system parameters into variables!
-/// // system_state.get(&world) provides read-only versions of your system parameters instead.
+/// // system_state.get(&world) is available if your params are read-only.
 /// let (event_writer, maybe_resource, query) = system_state.get_mut(&mut world);
 /// ```
 /// Caching:
@@ -151,7 +166,9 @@ impl<Param: SystemParam> SystemState<Param> {
         &self.meta
     }
 
-    /// Retrieve the [`SystemParam`] values. This can only be called when all parameters are read-only.
+    /// Retrieves the [`SystemParam`] values (must all be read-only) from the given [`World`].
+    ///
+    /// This method also ensures the cached access is up-to-date before retrieving the data.
     #[inline]
     pub fn get<'w, 's>(
         &'s mut self,
@@ -161,25 +178,26 @@ impl<Param: SystemParam> SystemState<Param> {
         Param::Fetch: ReadOnlySystemParamFetch,
     {
         self.validate_world_and_update_archetypes(world);
-        // SAFE: Param is read-only and doesn't allow mutable access to World. It also matches the World this SystemState was created with.
-        unsafe { self.get_unchecked_manual(world) }
+        // SAFETY: The params cannot request mutable access and world is the same one used to construct this state.
+        unsafe { self.get_unchecked(&SemiSafeCell::from_ref(world)) }
     }
 
-    /// Retrieve the mutable [`SystemParam`] values.
+    /// Retrieves the [`SystemParam`] values from the given [`World`].
+    ///
+    /// This method also ensures the cached access is up-to-date before retrieving the data.
     #[inline]
     pub fn get_mut<'w, 's>(
         &'s mut self,
         world: &'w mut World,
     ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
         self.validate_world_and_update_archetypes(world);
-        // SAFE: World is uniquely borrowed and matches the World this SystemState was created with.
-        unsafe { self.get_unchecked_manual(world) }
+        // SAFETY: The world is exclusively borrowed and the same one used to construct this state.
+        unsafe { self.get_unchecked(&SemiSafeCell::from_mut(world)) }
     }
 
-    /// Applies all state queued up for [`SystemParam`] values. For example, this will apply commands queued up
-    /// by a [`Commands`](`super::Commands`) parameter to the given [`World`].
-    /// This function should be called manually after the values returned by [`SystemState::get`] and [`SystemState::get_mut`]
-    /// are finished being used.
+    /// Applies any state queued by [`SystemParam`] values to the given [`World`].
+    ///
+    /// As an example, this will apply any commands queued using [`Commands`](`super::Commands`).
     pub fn apply(&mut self, world: &mut World) {
         self.param_state.apply(world);
     }
@@ -204,18 +222,21 @@ impl<Param: SystemParam> SystemState<Param> {
         }
     }
 
-    /// Retrieve the [`SystemParam`] values. This will not update archetypes automatically.
+    /// Retrieves the [`SystemParam`] values from the given [`World`].
+    ///
+    /// This method does _not_ update the system state's cached access before retrieving the data.
     ///
     /// # Safety
-    /// This call might access any of the input parameters in a way that violates Rust's mutability rules. Make sure the data
-    /// access is safe in the context of global [`World`] access. The passed-in [`World`] _must_ be the [`World`] the [`SystemState`] was
-    /// created with.
+    ///
+    /// Caller must ensure:
+    /// - The given world is the same world used to construct the system state.
+    /// - There are no active references that conflict with the system state's access. Mutable access must be unique.
     #[inline]
-    pub unsafe fn get_unchecked_manual<'w, 's>(
+    pub unsafe fn get_unchecked<'w, 's>(
         &'s mut self,
-        world: &'w World,
+        world: &SemiSafeCell<'w, World>,
     ) -> <Param::Fetch as SystemParamFetch<'w, 's>>::Item {
-        let change_tick = world.increment_change_tick();
+        let change_tick = world.as_ref().increment_change_tick();
         let param = <Param::Fetch as SystemParamFetch>::get_param(
             &mut self.param_state,
             &self.meta,
@@ -307,14 +328,17 @@ impl<In, Out, Sys: System<In = In, Out = Out>> IntoSystem<In, Out, AlreadyWasSys
 ///     input * input
 /// }
 /// ```
-pub struct In<In>(pub In);
+pub struct In<T>(pub T);
 pub struct InputMarker;
 
-/// The [`System`] counter part of an ordinary function.
+/// The [`System`]-type of functions and closures.
 ///
-/// You get this by calling [`IntoSystem::system`]  on a function that only accepts
-/// [`SystemParam`]s. The output of the system becomes the functions return type, while the input
-/// becomes the functions [`In`] tagged parameter or `()` if no such parameter exists.
+/// Constructed by calling [`IntoSystem::into_system`] with a function or closure whose arguments all implement
+/// [`SystemParam`].
+///
+/// If the function's first argument is [`In<T>`], `T` becomes the system's [`In`](crate::system::System::In) type,
+/// `()` otherwise.
+/// The function's return type becomes the system's [`Out`](crate::system::System::Out) type.
 pub struct FunctionSystem<In, Out, Param, Marker, F>
 where
     Param: SystemParam,
@@ -386,8 +410,8 @@ where
     }
 
     #[inline]
-    unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
-        let change_tick = world.increment_change_tick();
+    unsafe fn run_unchecked(&mut self, input: Self::In, world: &SemiSafeCell<World>) -> Self::Out {
+        let change_tick = world.as_ref().increment_change_tick();
         let out = self.func.run(
             input,
             self.param_state.as_mut().unwrap(),
@@ -421,20 +445,29 @@ where
             self.system_meta.name.as_ref(),
         );
     }
+
+    #[inline]
+    fn is_exclusive(&self) -> bool {
+        self.system_meta.is_exclusive()
+    }
 }
 
-/// A trait implemented for all functions that can be used as [`System`]s.
-pub trait SystemParamFunction<In, Out, Param: SystemParam, Marker>: Send + Sync + 'static {
+/// Trait implemented for all functions that can implement [`System`].
+//
+// This trait requires the generic `Params` because, as far as Rust knows, a type could have
+// more than one impl of `FnMut`, even though functions and closures don't.
+pub trait SystemParamFunction<In, Out, Params: SystemParam, Marker>: Send + Sync + 'static {
     /// # Safety
     ///
-    /// This call might access any of the input parameters in an unsafe way. Make sure the data
-    /// access is safe in the context of the system scheduler.
+    /// Caller must ensure:
+    /// - That `state` was constructed from the given `world`.
+    /// - There are no active references that conflict with `state`'s access. Mutable access must be unique.
     unsafe fn run(
         &mut self,
         input: In,
-        state: &mut Param::Fetch,
+        state: &mut Params::Fetch,
         system_meta: &SystemMeta,
-        world: &World,
+        world: &SemiSafeCell<World>,
         change_tick: u32,
     ) -> Out;
 }
@@ -442,50 +475,80 @@ pub trait SystemParamFunction<In, Out, Param: SystemParam, Marker>: Send + Sync 
 macro_rules! impl_system_function {
     ($($param: ident),*) => {
         #[allow(non_snake_case)]
-        impl<Out, Func: Send + Sync + 'static, $($param: SystemParam),*> SystemParamFunction<(), Out, ($($param,)*), ()> for Func
+        impl<Out, F, $($param),*> SystemParamFunction<(), Out, ($($param,)*), ()> for F
         where
-        for <'a> &'a mut Func:
-                FnMut($($param),*) -> Out +
-                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch>::Item),*) -> Out, Out: 'static
+            F: Send + Sync + 'static,
+            $($param: SystemParam,)*
+            Out: 'static,
+            for <'a> &'a mut F:
+                FnMut($($param,)*) -> Out +
+                FnMut($(<<$param as SystemParam>::Fetch as SystemParamFetch>::Item,)*) -> Out,
         {
             #[inline]
-            unsafe fn run(&mut self, _input: (), state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
+            unsafe fn run(
+                &mut self,
+                _input: (),
+                state: &mut <($($param,)*) as SystemParam>::Fetch,
+                system_meta: &SystemMeta,
+                world: &SemiSafeCell<World>,
+                change_tick: u32,
+            ) -> Out {
                 // Yes, this is strange, but rustc fails to compile this impl
                 // without using this function.
                 #[allow(clippy::too_many_arguments)]
                 fn call_inner<Out, $($param,)*>(
-                    mut f: impl FnMut($($param,)*)->Out,
+                    mut f: impl FnMut($($param,)*) -> Out,
                     $($param: $param,)*
-                )->Out{
+                ) -> Out {
                     f($($param,)*)
                 }
-                let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, $($param),*)
+                let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(
+                    state,
+                    system_meta,
+                    world,
+                    change_tick
+                );
+                call_inner(self, $($param,)*)
             }
         }
 
         #[allow(non_snake_case)]
-        impl<Input, Out, Func: Send + Sync + 'static, $($param: SystemParam),*> SystemParamFunction<Input, Out, ($($param,)*), InputMarker> for Func
+        impl<Input, Out, F, $($param),*> SystemParamFunction<Input, Out, ($($param,)*), InputMarker> for F
         where
-        for <'a> &'a mut Func:
-                FnMut(In<Input>, $($param),*) -> Out +
-                FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch>::Item),*) -> Out, Out: 'static
+            F: Send + Sync + 'static,
+            $($param: SystemParam,)*
+            Out: 'static,
+            for <'a> &'a mut F:
+                FnMut(In<Input>, $($param,)*) -> Out +
+                FnMut(In<Input>, $(<<$param as SystemParam>::Fetch as SystemParamFetch>::Item,)*) -> Out,
         {
             #[inline]
-            unsafe fn run(&mut self, input: Input, state: &mut <($($param,)*) as SystemParam>::Fetch, system_meta: &SystemMeta, world: &World, change_tick: u32) -> Out {
+            unsafe fn run(
+                &mut self,
+                input: Input,
+                state: &mut <($($param,)*) as SystemParam>::Fetch,
+                system_meta: &SystemMeta,
+                world: &SemiSafeCell<World>,
+                change_tick: u32,
+            ) -> Out {
                 #[allow(clippy::too_many_arguments)]
                 fn call_inner<Input, Out, $($param,)*>(
-                    mut f: impl FnMut(In<Input>, $($param,)*)->Out,
+                    mut f: impl FnMut(In<Input>, $($param,)*) -> Out,
                     input: In<Input>,
                     $($param: $param,)*
-                )->Out{
+                ) -> Out {
                     f(input, $($param,)*)
                 }
-                let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(state, system_meta, world, change_tick);
-                call_inner(self, In(input), $($param),*)
+                let ($($param,)*) = <<($($param,)*) as SystemParam>::Fetch as SystemParamFetch>::get_param(
+                    state,
+                    system_meta,
+                    world,
+                    change_tick
+                );
+                call_inner(self, In(input), $($param,)*)
             }
         }
     };
 }
 
-all_tuples!(impl_system_function, 0, 16, F);
+all_tuples!(impl_system_function, 0, 16, P);

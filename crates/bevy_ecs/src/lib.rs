@@ -6,6 +6,7 @@ pub mod change_detection;
 pub mod component;
 pub mod entity;
 pub mod event;
+pub mod ptr;
 pub mod query;
 #[cfg(feature = "bevy_reflect")]
 pub mod reflect;
@@ -28,13 +29,13 @@ pub mod prelude {
         event::{EventReader, EventWriter},
         query::{Added, AnyOf, ChangeTrackers, Changed, Or, QueryState, With, Without},
         schedule::{
-            AmbiguitySetLabel, ExclusiveSystemDescriptorCoercion, ParallelSystemDescriptorCoercion,
-            RunCriteria, RunCriteriaDescriptorCoercion, RunCriteriaLabel, RunCriteriaPiping,
-            Schedule, Stage, StageLabel, State, SystemLabel, SystemSet, SystemStage,
+            AmbiguitySetLabel, IntoSystemDescriptor, RunCriteria, RunCriteriaDescriptorCoercion,
+            RunCriteriaLabel, RunCriteriaPiping, Schedule, Stage, StageLabel, State, SystemLabel,
+            SystemSet, SystemStage,
         },
         system::{
-            Commands, In, IntoChainSystem, IntoExclusiveSystem, IntoSystem, Local, NonSend,
-            NonSendMut, Query, QuerySet, RemovedComponents, Res, ResMut, System,
+            Commands, In, IntoChainSystem, IntoSystem, Local, NonSend, NonSendMut, Query, QuerySet,
+            RemovedComponents, Res, ResMut, System,
         },
         world::{FromWorld, Mut, World},
     };

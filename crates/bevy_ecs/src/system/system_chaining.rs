@@ -1,6 +1,7 @@
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::ComponentId,
+    ptr::SemiSafeCell,
     query::Access,
     system::{IntoSystem, System},
     world::World,
@@ -82,9 +83,9 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
         self.system_a.is_send() && self.system_b.is_send()
     }
 
-    unsafe fn run_unsafe(&mut self, input: Self::In, world: &World) -> Self::Out {
-        let out = self.system_a.run_unsafe(input, world);
-        self.system_b.run_unsafe(out, world)
+    unsafe fn run_unchecked(&mut self, input: Self::In, world: &SemiSafeCell<World>) -> Self::Out {
+        let out = self.system_a.run_unchecked(input, world);
+        self.system_b.run_unchecked(out, world)
     }
 
     fn apply_buffers(&mut self, world: &mut World) {
@@ -104,6 +105,10 @@ impl<SystemA: System, SystemB: System<In = SystemA::Out>> System for ChainSystem
     fn check_change_tick(&mut self, change_tick: u32) {
         self.system_a.check_change_tick(change_tick);
         self.system_b.check_change_tick(change_tick);
+    }
+
+    fn is_exclusive(&self) -> bool {
+        self.system_a.is_exclusive() || self.system_b.is_exclusive()
     }
 }
 

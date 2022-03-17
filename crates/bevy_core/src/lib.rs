@@ -21,8 +21,7 @@ pub mod prelude {
 use bevy_app::prelude::*;
 use bevy_ecs::{
     entity::Entity,
-    schedule::{ExclusiveSystemDescriptorCoercion, SystemLabel},
-    system::IntoExclusiveSystem,
+    schedule::{IntoSystemDescriptor, SystemLabel},
 };
 use bevy_utils::HashSet;
 use std::ops::Range;
@@ -56,11 +55,11 @@ impl Plugin for CorePlugin {
             .register_type::<Name>()
             .register_type::<Range<f32>>()
             .register_type::<Timer>()
-            // time system is added as an "exclusive system" to ensure it runs before other systems
+            // time system is added to the "AtStart" set to ensure it runs before other systems
             // in CoreStage::First
             .add_system_to_stage(
                 CoreStage::First,
-                time_system.exclusive_system().label(CoreSystem::Time),
+                time_system.at_start().label(CoreSystem::Time),
             );
 
         register_rust_types(app);
